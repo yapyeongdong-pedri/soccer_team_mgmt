@@ -144,19 +144,37 @@ function getFormationSlots(quarter) {
   return formations[quarter.formation] || formations['4-3-3'];
 }
 
+function ensureQuarterSlotMaps(quarter) {
+  if (!quarter.backups) {
+    quarter.backups = {};
+  }
+  const slots = getFormationSlots(quarter);
+  slots.forEach((slot) => {
+    if (!(slot.id in quarter.assignments)) {
+      quarter.assignments[slot.id] = null;
+    }
+    if (!(slot.id in quarter.backups)) {
+      quarter.backups[slot.id] = null;
+    }
+  });
+}
+
 function createQuarter(index) {
   const formation = '4-3-3';
   const slots = formations[formation];
   const assignments = {};
+  const backups = {};
   slots.forEach((slot) => {
     assignments[slot.id] = null;
+    backups[slot.id] = null;
   });
   return {
     id: `q_${uid()}`,
     name: `${index}쿼터`,
     formation,
     locked: false,
-    assignments
+    assignments,
+    backups
   };
 }
 
@@ -237,14 +255,18 @@ function renderQuarterTabs() {
   });
 }
 
-function getAssignedPlayerIds(quarter) {
-  return new Set(Object.values(quarter.assignments).filter(Boolean));
+function getUsedPlayerIds(quarter) {
+  return new Set([
+    ...Object.values(quarter.assignments).filter(Boolean),
+    ...Object.values(quarter.backups || {}).filter(Boolean)
+  ]);
 }
 
 function renderPlayerList() {
   const quarter = getQuarter();
-  const assigned = getAssignedPlayerIds(quarter);
-  const visible = state.players.filter((p) => !assigned.has(p.id));
+  ensureQuarterSlotMaps(quarter);
+  const used = getUsedPlayerIds(quarter);
+  const visible = state.players.filter((p) => !used.has(p.id));
 
   el.playerList.innerHTML = '';
   if (visible.length === 0) {
@@ -320,7 +342,8 @@ function openQuarterDeleteModal(quarter) {
 
 function renderPlayerStrip() {
   const quarter = getQuarter();
-  const assigned = getAssignedPlayerIds(quarter);
+  ensureQuarterSlotMaps(quarter);
+  const used = getUsedPlayerIds(quarter);
   const locked = quarter.locked;
 
   el.playerStrip.innerHTML = '';
@@ -334,7 +357,7 @@ function renderPlayerStrip() {
 
   state.players.forEach((player) => {
     const chip = document.createElement('button');
-    const isAssigned = assigned.has(player.id);
+    const isAssigned = used.has(player.id);
     const isSelected = state.selectedPlayerId === player.id;
     chip.type = 'button';
     chip.className = `player-chip ${player.type === 'merc' ? 'merc' : 'attend'}${isSelected ? ' selected' : ''}${isAssigned || locked ? ' disabled' : ''}`;
@@ -357,6 +380,9 @@ function clearPlayerFromAllQuarters(playerId) {
     Object.keys(quarter.assignments).forEach((slotId) => {
       if (quarter.assignments[slotId] === playerId) {
         quarter.assignments[slotId] = null;
+      }
+      if (quarter.backups?.[slotId] === playerId) {
+        quarter.backups[slotId] = null;
       }
     });
   });
@@ -409,17 +435,50 @@ function togglePlayerType(playerId) {
   return true;
 }
 
-function placePlayerToSlot(quarter, slotId, playerId) {
+function makeSlotKey(slotId, targetType = 'main') {
+  return targetType === 'backup' ? `backup:${slotId}` : slotId;
+}
+
+function parseSlotKey(slotKey) {
+  if (!slotKey) {
+    return { slotId: null, targetType: 'main' };
+  }
+  if (slotKey.startsWith('backup:')) {
+    return { slotId: slotKey.slice(7), targetType: 'backup' };
+  }
+  return { slotId: slotKey, targetType: 'main' };
+}
+
+function getQuarterSlotValue(quarter, slotId, targetType = 'main') {
+  if (targetType === 'backup') {
+    return quarter.backups?.[slotId] || null;
+  }
+  return quarter.assignments?.[slotId] || null;
+}
+
+function setQuarterSlotValue(quarter, slotId, targetType, playerId) {
+  if (targetType === 'backup') {
+    quarter.backups[slotId] = playerId;
+    return;
+  }
+  quarter.assignments[slotId] = playerId;
+}
+
+function placePlayerToSlot(quarter, slotId, playerId, targetType = 'main') {
   Object.keys(quarter.assignments).forEach((id) => {
     if (quarter.assignments[id] === playerId) {
       quarter.assignments[id] = null;
     }
+    if (quarter.backups?.[id] === playerId) {
+      quarter.backups[id] = null;
+    }
   });
-  quarter.assignments[slotId] = playerId;
+  setQuarterSlotValue(quarter, slotId, targetType, playerId);
 }
 
 function assignSelectedPlayer(playerId) {
   const quarter = getQuarter();
+  ensureQuarterSlotMaps(quarter);
   if (quarter.locked) {
     setSquadStatus('잠금 상태에서는 수정할 수 없습니다.', true);
     return;
@@ -429,8 +488,11 @@ function assignSelectedPlayer(playerId) {
     render();
     return;
   }
-
-  placePlayerToSlot(quarter, state.selectedSlotId, playerId);
+  const { slotId, targetType } = parseSlotKey(state.selectedSlotId);
+  if (!slotId) {
+    return;
+  }
+  placePlayerToSlot(quarter, slotId, playerId, targetType);
   state.selectedSlotId = null;
   state.selectedPlayerId = null;
   render();
@@ -438,62 +500,70 @@ function assignSelectedPlayer(playerId) {
 
 function renderPitch() {
   const quarter = getQuarter();
+  ensureQuarterSlotMaps(quarter);
   const slots = getFormationSlots(quarter);
 
   el.pitch.innerHTML = '';
   slots.forEach((slot) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
     const role = roleClass[slot.role] || 'mf';
-    const hasPlayer = Boolean(quarter.assignments[slot.id]);
-    btn.className = `position ${role} ${hasPlayer ? '' : 'empty'} ${state.selectedSlotId === slot.id ? 'selected' : ''}`.trim();
-    btn.style.left = `${slot.x}%`;
-    btn.style.top = `${slot.y}%`;
-    btn.style.transform = 'translate(-50%, -50%)';
 
-    const player = state.players.find((p) => p.id === quarter.assignments[slot.id]);
-    btn.textContent = player ? player.name : `${slot.role}`;
-    btn.title = player ? `${slot.role} - ${player.name}` : `${slot.role} 자리`;
+    const renderSlotButton = (targetType) => {
+      const slotKey = makeSlotKey(slot.id, targetType);
+      const playerId = getQuarterSlotValue(quarter, slot.id, targetType);
+      const player = state.players.find((p) => p.id === playerId);
+      const isBackup = targetType === 'backup';
+      const btn = document.createElement('button');
+      const emptyClass = !player ? 'empty' : '';
+      btn.type = 'button';
+      btn.className = `position ${role} ${isBackup ? 'backup' : ''} ${emptyClass} ${state.selectedSlotId === slotKey ? 'selected' : ''}`.trim();
+      btn.style.left = `${slot.x}%`;
+      btn.style.top = `${slot.y}%`;
+      btn.style.transform = isBackup ? 'translate(42%, -118%)' : 'translate(-50%, -50%)';
+      btn.textContent = player ? player.name : (isBackup ? '' : `${slot.role}`);
+      btn.title = player
+        ? `${slot.role}${isBackup ? ' 후보' : ''} - ${player.name}`
+        : `${slot.role}${isBackup ? ' 후보' : ''} 자리`;
 
-    btn.addEventListener('click', () => {
-      if (quarter.locked) {
-        setSquadStatus('잠금 상태에서는 수정할 수 없습니다.', true);
-        return;
-      }
-      if (state.selectedPlayerId) {
-        placePlayerToSlot(quarter, slot.id, state.selectedPlayerId);
-        state.selectedPlayerId = null;
-        state.selectedSlotId = null;
-        render();
-        return;
-      }
-      if (player) {
-        quarter.assignments[slot.id] = null;
-        if (state.selectedSlotId === slot.id) {
-          state.selectedSlotId = null;
+      btn.addEventListener('click', () => {
+        if (quarter.locked) {
+          setSquadStatus('잠금 상태에서는 수정할 수 없습니다.', true);
+          return;
         }
-        if (state.selectedPlayerId === player.id) {
-          state.selectedPlayerId = null;
-        }
-      } else {
         if (state.selectedPlayerId) {
-          placePlayerToSlot(quarter, slot.id, state.selectedPlayerId);
+          placePlayerToSlot(quarter, slot.id, state.selectedPlayerId, targetType);
           state.selectedPlayerId = null;
           state.selectedSlotId = null;
           render();
           return;
         }
-        state.selectedSlotId = state.selectedSlotId === slot.id ? null : slot.id;
-      }
-      render();
-    });
 
-    el.pitch.appendChild(btn);
+        if (player) {
+          setQuarterSlotValue(quarter, slot.id, targetType, null);
+          if (state.selectedSlotId === slotKey) {
+            state.selectedSlotId = null;
+          }
+          if (state.selectedPlayerId === player.id) {
+            state.selectedPlayerId = null;
+          }
+          render();
+          return;
+        }
+
+        state.selectedSlotId = state.selectedSlotId === slotKey ? null : slotKey;
+        render();
+      });
+
+      el.pitch.appendChild(btn);
+    };
+
+    renderSlotButton('main');
+    renderSlotButton('backup');
   });
 }
 
 function renderCopyOptions() {
   const source = getQuarter();
+  ensureQuarterSlotMaps(source);
   el.copyFrom.innerHTML = '';
 
   const options = state.quarters.filter((q) => q.id !== source.id);
@@ -508,6 +578,11 @@ function renderCopyOptions() {
     return;
   }
 
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = '쿼터 선택';
+  el.copyFrom.appendChild(placeholder);
+
   options.forEach((q) => {
     const option = document.createElement('option');
     option.value = q.id;
@@ -516,9 +591,9 @@ function renderCopyOptions() {
   });
 
   if (!state.copySourceId || !options.some((q) => q.id === state.copySourceId)) {
-    state.copySourceId = options[0].id;
+    state.copySourceId = null;
   }
-  el.copyFrom.value = state.copySourceId;
+  el.copyFrom.value = state.copySourceId || '';
   el.copyFrom.disabled = false;
   const target = state.quarters.find((q) => q.id === state.copySourceId);
   el.copyBtn.disabled = !target || target.locked;
@@ -877,6 +952,7 @@ function handleAddMercClick() {
 
 function changeFormation() {
   const quarter = getQuarter();
+  ensureQuarterSlotMaps(quarter);
   if (quarter.locked) {
     setSquadStatus('잠금 상태에서는 포메이션을 바꿀 수 없습니다.', true);
     return;
@@ -889,10 +965,13 @@ function changeFormation() {
 
   quarter.formation = next;
   const assignments = {};
+  const backups = {};
   formations[next].forEach((slot) => {
     assignments[slot.id] = null;
+    backups[slot.id] = null;
   });
   quarter.assignments = assignments;
+  quarter.backups = backups;
   state.selectedSlotId = null;
   state.selectedPlayerId = null;
 
@@ -913,6 +992,7 @@ function toggleLock() {
 
 async function captureCurrentQuarter() {
   const quarter = getQuarter();
+  ensureQuarterSlotMaps(quarter);
   const slots = getFormationSlots(quarter);
 
   const roleFill = {
@@ -920,6 +1000,12 @@ async function captureCurrentQuarter() {
     MF: '#37a64a',
     DF: '#2c6be0',
     GK: '#f2c94c'
+  };
+  const roleFillTransparent = {
+    FW: 'rgba(224, 76, 58, 0.5)',
+    MF: 'rgba(55, 166, 74, 0.5)',
+    DF: 'rgba(44, 107, 224, 0.5)',
+    GK: 'rgba(242, 201, 76, 0.5)'
   };
 
   const loadImage = (src) => new Promise((resolve, reject) => {
@@ -929,7 +1015,7 @@ async function captureCurrentQuarter() {
     image.src = src;
   });
 
-  const drawSlot = (ctx, x, y, radius, label, fillColor, empty) => {
+  const drawSlot = (ctx, x, y, radius, label, fillColor, empty, minFontSize = 13, fontScale = 1) => {
     ctx.save();
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -946,13 +1032,13 @@ async function captureCurrentQuarter() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    let fontSize = Math.floor(radius * 0.44);
+    let fontSize = Math.floor(radius * 0.44 * fontScale);
     if (label.length >= 6) {
       fontSize = Math.floor(fontSize * 0.82);
     } else if (label.length >= 4) {
       fontSize = Math.floor(fontSize * 0.9);
     }
-    ctx.font = `700 ${Math.max(13, fontSize)}px sans-serif`;
+    ctx.font = `700 ${Math.max(minFontSize, fontSize)}px sans-serif`;
     ctx.fillText(label, x, y);
     ctx.restore();
   };
@@ -1021,11 +1107,43 @@ async function captureCurrentQuarter() {
       const role = slot.role || 'MF';
       const label = player ? player.name : slot.role;
       drawSlot(ctx, x, y, radius, label, roleFill[role] || roleFill.MF, !player);
+
+      const backupPlayerId = quarter.backups[slot.id];
+      const backupPlayer = state.players.find((p) => p.id === backupPlayerId);
+      if (backupPlayer) {
+        const backupX = x + Math.round(radius * 0.95);
+        const backupY = y - Math.round(radius * 0.72);
+        const backupRadius = Math.max(12, Math.round(radius * 0.5));
+        drawSlot(
+          ctx,
+          backupX,
+          backupY,
+          backupRadius,
+          backupPlayer.name,
+          roleFillTransparent[role] || roleFillTransparent.MF,
+          false,
+          6,
+          1.3
+        );
+      }
     });
 
     const link = document.createElement('a');
     link.href = canvas.toDataURL('image/png');
-    link.download = `${quarter.name}_${quarter.formation}.png`;
+    const sanitizeFilePart = (text) => String(text || '').replace(/[\\/:*?"<>|]/g, '-').trim();
+    const formatDateForFileName = (dateText) => {
+      const value = String(dateText || '').trim();
+      const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!match) {
+        return sanitizeFilePart(value);
+      }
+      return `${match[1].slice(2)}.${match[2]}.${match[3]}`;
+    };
+    const teamPart = sanitizeFilePart(meta.team || '우리팀');
+    const datePart = formatDateForFileName(meta.matchDate || getTodayDateString());
+    const quarterPart = sanitizeFilePart(quarter.name);
+    const formationPart = sanitizeFilePart(quarter.formation);
+    link.download = `(${teamPart}) ${datePart}_${quarterPart}_${formationPart}.png`;
     link.click();
     setSquadStatus(`${quarter.name} 스쿼드 이미지 다운로드 완료`);
   } catch (error) {
@@ -1064,6 +1182,7 @@ function removeQuarter(quarterId) {
 
 function copySquadToCurrent() {
   const source = getQuarter();
+  ensureQuarterSlotMaps(source);
   const target = state.quarters.find((q) => q.id === el.copyFrom.value);
 
   if (!target) {
@@ -1077,6 +1196,7 @@ function copySquadToCurrent() {
 
   target.formation = source.formation;
   target.assignments = { ...source.assignments };
+  target.backups = { ...source.backups };
   state.selectedSlotId = null;
   state.selectedPlayerId = null;
   setSquadStatus(`${source.name} 스쿼드를 ${target.name}에 복사했습니다.`);
@@ -1108,7 +1228,7 @@ function bindEvents() {
   el.lockToggle.addEventListener('click', toggleLock);
   el.captureBtn.addEventListener('click', captureCurrentQuarter);
   el.copyFrom.addEventListener('change', (event) => {
-    state.copySourceId = event.target.value;
+    state.copySourceId = event.target.value || null;
     const target = state.quarters.find((q) => q.id === state.copySourceId);
     el.copyBtn.disabled = !target || target.locked;
   });

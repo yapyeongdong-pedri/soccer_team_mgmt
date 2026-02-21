@@ -188,7 +188,7 @@ button:hover {
   max-height: 360px;
   overflow: auto;
   padding-right: 4px;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   margin-top: 6px;
 }
 
@@ -199,12 +199,12 @@ button:hover {
   justify-content: center;
   background: #f7f3ea;
   border-radius: 12px;
-  padding: 6px 6px;
+  padding: 4px 4px;
   border: 1px solid transparent;
   cursor: pointer;
-  min-height: 36px;
-  font-size: 14px;
-  gap: 4px;
+  min-height: 32px;
+  font-size: 12px;
+  gap: 3px;
 }
 
 .player-title {
@@ -222,7 +222,7 @@ button:hover {
 
 .player-name {
   font-weight: 700;
-  font-size: 14px;
+  font-size: 12px;
   min-width: 0;
   white-space: normal;
   overflow: hidden;
@@ -231,7 +231,7 @@ button:hover {
 }
 
 .tag {
-  font-size: 10px;
+  font-size: 9px;
   padding: 1px 1px;
   border-radius: 2px;
   color: #fff;
@@ -353,6 +353,25 @@ button:hover {
 .position.mf { background: var(--mf); }
 .position.df { background: var(--df); }
 .position.gk { background: var(--gk); color: #2c2c2c; }
+
+.position.backup {
+  width: 29px;
+  height: 29px;
+  min-width: 29px;
+  min-height: 29px;
+  aspect-ratio: 1 / 1;
+  font-size: 8px;
+  line-height: 1;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px dashed rgba(255,255,255,0.62);
+  z-index: 3;
+}
+
+.position.backup.fw { background: rgba(224, 76, 58, 0.6); }
+.position.backup.mf { background: rgba(55, 166, 74, 0.6); }
+.position.backup.df { background: rgba(44, 107, 224, 0.6); }
+.position.backup.gk { background: rgba(242, 201, 76, 0.6); color: #2c2c2c; }
 
 .position.selected {
   box-shadow: 0 0 0 3px rgba(255,255,255,0.8);
@@ -480,18 +499,18 @@ button {
 }
 
 .match-meta-row .meta-team {
-  flex: 0 0 30%;
-  max-width: 35%;
+  flex: 0 0 25%;
+  max-width: 30%;
 }
 
 .match-meta-row .meta-opponent {
-  flex: 0 0 30%;
-  max-width: 35%;
+  flex: 0 0 25%;
+  max-width: 30%;
 }
 
 .match-meta-row .meta-date {
   flex: 0 0 20%;
-  max-width: 20%;
+  max-width: 30%;
 }
 
 .match-meta-row input[type="text"],
@@ -560,7 +579,7 @@ button {
 }
 
 .player {
-  min-height: 44px;
+  min-height: 36px;
   border-radius: 10px;
 }
 
@@ -788,7 +807,8 @@ button {
   min-width: 110px;
 }
 
-#ocrBtn:disabled {
+#ocrBtn:disabled,
+#copyBtn:disabled {
   background: #9fb8ab;
   color: #f4f7f5;
   border: 1px solid #95ab9f;
@@ -978,7 +998,7 @@ button {
   }
 
   .player-strip {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .compact-player-card {
