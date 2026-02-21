@@ -14,72 +14,69 @@
         <h1>11명 축구 스쿼드</h1>
         <p class="sub">포지션을 클릭하고, 아래 선수 리스트에서 선수를 선택해 배치하세요.</p>
       </div>
-      <div class="legend">
+    </header>
+
+    <main class="app-main flow-main">
+      <div class="card">
+        <h2>선수 불러오기</h2>
+        <p class="muted">명단 이미지를 업로드하면 이름 리스트를 자동으로 불러옵니다.</p>
+        <div class="row">
+          <input id="imageInput" type="file" accept="image/*" />
+          <button id="ocrBtn" class="primary">참석 명단 읽기</button>
+        </div>
+        <div class="row">
+          <span id="ocrStatus" class="status status-box">대기 중</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>용병 추가 / 선수 리스트</h2>
+        <div class="row">
+          <input id="mercName" type="text" placeholder="용병/선수 이름" />
+          <button id="addMerc" class="secondary">용병/선수 추가</button>
+        </div>
+        <div class="row">
+          <span id="playerStatus" class="status status-box">선수 목록 대기 중</span>
+        </div>
+        <div class="player-list" id="playerList"></div>
+      </div>
+
+      <div class="card quarter-card controls">
+        <div class="quarter-header">
+          <h2>쿼터 선택</h2>
+          <button id="addQuarter" class="secondary">쿼터 추가</button>
+        </div>
+        <div id="quarterTabs" class="tabs"></div>
+        <div class="row wrap">
+          <label>
+            포메이션
+            <select id="formationSelect"></select>
+          </label>
+          <button id="lockToggle" class="secondary">잠금</button>
+          <button id="captureBtn" class="secondary">캡쳐</button>
+        </div>
+        <div class="row wrap">
+          <label>
+            다른 스쿼드 복사
+            <select id="copyFrom"></select>
+          </label>
+          <button id="copyBtn" class="primary">복사</button>
+        </div>
+        <div class="row">
+          <span id="squadStatus" class="status status-box">스쿼드 대기 중</span>
+        </div>
+      </div>
+
+      <div class="legend legend-near-pitch">
         <span class="legend-item fw">FW</span>
         <span class="legend-item mf">MF</span>
         <span class="legend-item df">DF</span>
         <span class="legend-item gk">GK</span>
       </div>
-    </header>
 
-    <main class="app-main">
-      <section class="panel left">
-        <div class="card">
-          <h2>선수 불러오기</h2>
-          <p class="muted">사진 업로드 후, <span class="pill">참석</span> 아래에 있는 이름을 자동으로 불러옵니다.</p>
-          <div class="row">
-            <input id="imageInput" type="file" accept="image/*" />
-            <button id="ocrBtn" class="primary">참석 읽기</button>
-          </div>
-          <div class="row">
-            <input id="ocrApiKey" type="text" placeholder="OCR.Space API Key (선택, 기본 무료키 사용)" />
-          </div>
-          <div class="row">
-            <span id="ocrStatus" class="status">대기 중</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <h2>선수 리스트</h2>
-          <div class="row">
-            <input id="mercName" type="text" placeholder="용병 이름" />
-            <button id="addMerc" class="secondary">용병 추가</button>
-          </div>
-          <div class="player-list" id="playerList"></div>
-        </div>
-      </section>
-
-      <section class="panel right">
-        <div class="card quarter-card">
-          <div class="quarter-header">
-            <h2>쿼터 스쿼드</h2>
-            <button id="addQuarter" class="secondary">쿼터추가</button>
-          </div>
-          <div id="quarterTabs" class="tabs"></div>
-        </div>
-
-        <div class="card controls">
-          <div class="row wrap">
-            <label>
-              포메이션
-              <select id="formationSelect"></select>
-            </label>
-            <button id="lockToggle" class="secondary">잠금</button>
-            <button id="captureBtn" class="secondary">캡쳐</button>
-          </div>
-          <div class="row wrap">
-            <label>
-              다른 스쿼드 복사
-              <select id="copyFrom"></select>
-            </label>
-            <button id="copyBtn" class="primary">복사</button>
-          </div>
-        </div>
-
-        <div class="pitch-wrap">
-          <div id="pitch" class="pitch"></div>
-        </div>
-      </section>
+      <div class="pitch-wrap">
+        <div id="pitch" class="pitch"></div>
+      </div>
     </main>
   </div>
 

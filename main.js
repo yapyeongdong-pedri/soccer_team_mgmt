@@ -78,9 +78,10 @@ const state = {
 
 const el = {
   imageInput: document.getElementById('imageInput'),
-  ocrApiKey: document.getElementById('ocrApiKey'),
   ocrBtn: document.getElementById('ocrBtn'),
   ocrStatus: document.getElementById('ocrStatus'),
+  playerStatus: document.getElementById('playerStatus'),
+  squadStatus: document.getElementById('squadStatus'),
   mercName: document.getElementById('mercName'),
   addMerc: document.getElementById('addMerc'),
   playerList: document.getElementById('playerList'),
@@ -122,9 +123,24 @@ function createQuarter(index) {
   };
 }
 
-function setStatus(text, isError = false) {
-  el.ocrStatus.textContent = text;
-  el.ocrStatus.style.color = isError ? '#b93d2d' : '';
+function setBlockStatus(target, text, isError = false) {
+  if (!target) {
+    return;
+  }
+  target.textContent = text;
+  target.classList.toggle('error', Boolean(isError));
+}
+
+function setOcrStatus(text, isError = false) {
+  setBlockStatus(el.ocrStatus, text, isError);
+}
+
+function setPlayerStatus(text, isError = false) {
+  setBlockStatus(el.playerStatus, text, isError);
+}
+
+function setSquadStatus(text, isError = false) {
+  setBlockStatus(el.squadStatus, text, isError);
 }
 
 function refreshFormationSelect() {
@@ -192,6 +208,19 @@ function renderPlayerList() {
     tag.textContent = player.type === 'merc' ? '용병' : '참석';
 
     const remove = document.createElement('button');
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'edit-player';
+    edit.textContent = '수정';
+    edit.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const nextName = window.prompt('수정할 이름을 입력해 주세요.', player.name);
+      if (nextName === null) {
+        return;
+      }
+      renamePlayer(player.id, nextName);
+    });
+
     remove.type = 'button';
     remove.className = 'remove-player';
     remove.textContent = '삭제';
@@ -201,6 +230,7 @@ function renderPlayerList() {
     });
 
     meta.appendChild(tag);
+    meta.appendChild(edit);
     meta.appendChild(remove);
     row.appendChild(name);
     row.appendChild(meta);
@@ -230,18 +260,39 @@ function removePlayer(playerId) {
   if (state.selectedSlotId) {
     state.selectedSlotId = null;
   }
-  setStatus(`${player ? player.name : '선수'} 삭제 완료`);
+  setPlayerStatus(`${player ? player.name : '선수'} 삭제 완료`);
+  render();
+}
+
+function renamePlayer(playerId, nextNameRaw) {
+  const nextName = nextNameRaw.replace(/\s+/g, ' ').trim();
+  if (!nextName) {
+    setPlayerStatus('수정할 이름을 입력해 주세요.', true);
+    return;
+  }
+  const duplicate = state.players.some((p) => p.id !== playerId && p.name === nextName);
+  if (duplicate) {
+    setPlayerStatus('이미 존재하는 이름입니다.', true);
+    return;
+  }
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player) {
+    return;
+  }
+  const prev = player.name;
+  player.name = nextName;
+  setPlayerStatus(`${prev} -> ${nextName} 수정 완료`);
   render();
 }
 
 function assignSelectedPlayer(playerId) {
   const quarter = getQuarter();
   if (quarter.locked) {
-    setStatus('잠금 상태에서는 수정할 수 없습니다.', true);
+    setSquadStatus('잠금 상태에서는 수정할 수 없습니다.', true);
     return;
   }
   if (!state.selectedSlotId) {
-    setStatus('먼저 스쿼드의 포지션을 클릭해 주세요.', true);
+    setSquadStatus('먼저 스쿼드의 포지션을 클릭해 주세요.', true);
     return;
   }
 
@@ -282,7 +333,7 @@ function renderPitch() {
 
     btn.addEventListener('click', () => {
       if (quarter.locked) {
-        setStatus('잠금 상태에서는 수정할 수 없습니다.', true);
+        setSquadStatus('잠금 상태에서는 수정할 수 없습니다.', true);
         return;
       }
       if (player) {
@@ -361,7 +412,7 @@ function addPlayersByNames(names, type) {
   return addedCount;
 }
 
-function parseAttendNames(text) {
+function parseAttendSectionNames(text) {
   const lines = text
     .replace(/\r/g, '')
     .split('\n')
@@ -407,10 +458,105 @@ function parseAttendNames(text) {
   return [...new Set(names)];
 }
 
+function isLikelyName(token) {
+  const name = token.replace(/\s+/g, ' ').trim();
+  if (!name) {
+    return false;
+  }
+  const blocked = /^(참석|불참|결석|대기|비고|코치|감독|매니저|명단|인원|총원|회비|날짜|시간|장소|쿼터|포메이션|스쿼드|용병)$/;
+  if (blocked.test(name)) {
+    return false;
+  }
+  if (/^[가-힣]{2,5}$/.test(name)) {
+    return true;
+  }
+  if (/^[A-Za-z][A-Za-z\s]{1,19}$/.test(name)) {
+    return true;
+  }
+  return false;
+}
+
+function extractNamesFromLine(line) {
+  const cleaned = line
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\[[^\]]*\]/g, ' ')
+    .replace(/[•·]/g, ' ')
+    .replace(/^\s*[\d]+\s*[.)-]?\s*/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!cleaned) {
+    return [];
+  }
+
+  const candidates = [];
+  const byDelim = cleaned
+    .split(/[,/|:;\t]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  byDelim.forEach((segment) => {
+    if (isLikelyName(segment)) {
+      candidates.push(segment);
+      return;
+    }
+    const words = segment.split(' ').filter(Boolean);
+    if (words.length > 1) {
+      words.forEach((w) => {
+        if (isLikelyName(w)) {
+          candidates.push(w);
+        }
+      });
+    }
+  });
+
+  const koreanMatches = cleaned.match(/[가-힣]{2,5}/g) || [];
+  koreanMatches.forEach((item) => {
+    if (isLikelyName(item)) {
+      candidates.push(item);
+    }
+  });
+
+  return [...new Set(candidates)];
+}
+
+function parseTemplateNames(text) {
+  const lines = text
+    .replace(/\r/g, '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const names = [];
+  lines.forEach((line) => {
+    const lineHasMostlyNoise = /(날짜|시간|장소|회비|유니폼|준비물|공지|대진|포메이션|쿼터|비고)/.test(line);
+    if (lineHasMostlyNoise && !/[가-힣]{2,5}/.test(line)) {
+      return;
+    }
+    extractNamesFromLine(line).forEach((name) => {
+      names.push(name);
+    });
+  });
+
+  return [...new Set(names)];
+}
+
+function parseNamesFromOcrText(text) {
+  const fromAttendSection = parseAttendSectionNames(text);
+  const fromTemplate = parseTemplateNames(text);
+
+  if (fromAttendSection.length >= 4 && fromTemplate.length <= fromAttendSection.length + 2) {
+    return fromAttendSection;
+  }
+  if (fromTemplate.length > 0) {
+    return fromTemplate;
+  }
+  return fromAttendSection;
+}
+
 function getOcrApiKey() {
   const configKey = window.__APP_CONFIG__?.ocrSpaceApiKey?.trim();
-  const inputKey = (el.ocrApiKey?.value || '').trim();
-  return configKey || inputKey || 'helloworld';
+  return configKey || 'helloworld';
 }
 
 async function preprocessImageForOcr(file) {
@@ -491,7 +637,7 @@ async function recognizeWithTesseract(fileOrBlob) {
 async function readAttendFromImage() {
   const file = el.imageInput.files?.[0];
   if (!file) {
-    setStatus('먼저 이미지를 업로드해 주세요.', true);
+    setOcrStatus('먼저 이미지를 업로드해 주세요.', true);
     return;
   }
 
@@ -502,34 +648,34 @@ async function readAttendFromImage() {
     let names = [];
 
     try {
-      setStatus('OCR.Space(무료) 분석 중...');
+      setOcrStatus('OCR.Space(무료) 분석 중...');
       const ocrSpaceText = await recognizeWithOcrSpace(processed, apiKey);
-      names = parseAttendNames(ocrSpaceText);
+      names = parseNamesFromOcrText(ocrSpaceText);
     } catch (spaceError) {
       console.warn('OCR.Space 실패, Tesseract 폴백:', spaceError);
     }
 
     if (names.length === 0) {
-      setStatus('Tesseract 폴백 분석 중...');
+      setOcrStatus('Tesseract 폴백 분석 중...');
       const tessText = await recognizeWithTesseract(processed);
-      names = parseAttendNames(tessText);
+      names = parseNamesFromOcrText(tessText);
     }
 
     if (names.length === 0) {
-      setStatus('참석 영역에서 이름을 찾지 못했습니다. 이미지 선명도를 확인해 주세요.', true);
+      setOcrStatus('명단에서 이름을 찾지 못했습니다. 고정 양식/이미지 선명도를 확인해 주세요.', true);
       return;
     }
 
     const added = addPlayersByNames(names, 'attend');
     if (added === 0) {
-      setStatus('새로 추가된 참석자가 없습니다. (중복 제외)');
+      setOcrStatus('새로 추가된 참석자가 없습니다. (중복 제외)');
     } else {
-      setStatus(`참석자 ${added}명 추가 완료`);
+      setOcrStatus(`참석자 ${added}명 추가 완료`);
     }
     render();
   } catch (error) {
     console.error(error);
-    setStatus('이미지 읽기에 실패했습니다.', true);
+    setOcrStatus('이미지 읽기에 실패했습니다.', true);
   } finally {
     el.ocrBtn.disabled = false;
   }
@@ -538,23 +684,23 @@ async function readAttendFromImage() {
 function addMercenary() {
   const name = el.mercName.value.trim();
   if (!name) {
-    setStatus('용병 이름을 입력해 주세요.', true);
+    setPlayerStatus('용병 이름을 입력해 주세요.', true);
     return;
   }
   const added = addPlayersByNames([name], 'merc');
   if (!added) {
-    setStatus('이미 존재하는 이름입니다.', true);
+    setPlayerStatus('이미 존재하는 이름입니다.', true);
     return;
   }
   el.mercName.value = '';
-  setStatus('용병 추가 완료');
+  setPlayerStatus('용병 추가 완료');
   render();
 }
 
 function changeFormation() {
   const quarter = getQuarter();
   if (quarter.locked) {
-    setStatus('잠금 상태에서는 포메이션을 바꿀 수 없습니다.', true);
+    setSquadStatus('잠금 상태에서는 포메이션을 바꿀 수 없습니다.', true);
     return;
   }
 
@@ -571,7 +717,7 @@ function changeFormation() {
   quarter.assignments = assignments;
   state.selectedSlotId = null;
 
-  setStatus(`${quarter.name} 포메이션 변경: ${next}`);
+  setSquadStatus(`${quarter.name} 포메이션 변경: ${next}`);
   render();
 }
 
@@ -581,19 +727,19 @@ function toggleLock() {
   if (quarter.locked) {
     state.selectedSlotId = null;
   }
-  setStatus(`${quarter.name} ${quarter.locked ? '잠금 완료' : '잠금 해제'}`);
+  setSquadStatus(`${quarter.name} ${quarter.locked ? '잠금 완료' : '잠금 해제'}`);
   render();
 }
 
 async function captureCurrentQuarter() {
   if (typeof html2canvas === 'undefined') {
-    setStatus('캡처 라이브러리를 불러오지 못했습니다.', true);
+    setSquadStatus('캡처 라이브러리를 불러오지 못했습니다.', true);
     return;
   }
   const quarter = getQuarter();
 
   try {
-    setStatus('캡처 생성 중...');
+    setSquadStatus('캡처 생성 중...');
     const node = document.querySelector('.pitch-wrap');
     const canvas = await html2canvas(node, {
       backgroundColor: null,
@@ -604,10 +750,10 @@ async function captureCurrentQuarter() {
     link.href = canvas.toDataURL('image/png');
     link.download = `${quarter.name}_${quarter.formation}.png`;
     link.click();
-    setStatus(`${quarter.name} 캡처 다운로드 완료`);
+    setSquadStatus(`${quarter.name} 캡처 다운로드 완료`);
   } catch (error) {
     console.error(error);
-    setStatus('캡처 생성에 실패했습니다.', true);
+    setSquadStatus('캡처 생성에 실패했습니다.', true);
   }
 }
 
@@ -617,7 +763,7 @@ function addQuarter() {
   state.quarters.push(quarter);
   state.activeQuarterId = quarter.id;
   state.selectedSlotId = null;
-  setStatus(`${quarter.name} 생성 완료`);
+  setSquadStatus(`${quarter.name} 생성 완료`);
   render();
 }
 
@@ -626,18 +772,18 @@ function copySquadToCurrent() {
   const source = state.quarters.find((q) => q.id === el.copyFrom.value);
 
   if (!source) {
-    setStatus('복사할 쿼터를 선택해 주세요.', true);
+    setSquadStatus('복사할 쿼터를 선택해 주세요.', true);
     return;
   }
   if (target.locked) {
-    setStatus('잠금 상태에서는 복사할 수 없습니다.', true);
+    setSquadStatus('잠금 상태에서는 복사할 수 없습니다.', true);
     return;
   }
 
   target.formation = source.formation;
   target.assignments = { ...source.assignments };
   state.selectedSlotId = null;
-  setStatus(`${source.name} 스쿼드를 ${target.name}로 복사했습니다.`);
+  setSquadStatus(`${source.name} 스쿼드를 ${target.name}로 복사했습니다.`);
   render();
 }
 
@@ -664,9 +810,6 @@ function init() {
     state.quarters.push(createQuarter(i));
   }
   state.activeQuarterId = state.quarters[0].id;
-  if (window.__APP_CONFIG__?.ocrSpaceApiKey && el.ocrApiKey) {
-    el.ocrApiKey.value = 'local config key loaded';
-  }
   bindEvents();
   render();
 }

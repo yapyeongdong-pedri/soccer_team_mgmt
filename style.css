@@ -352,3 +352,384 @@ input:disabled {
   transform: none !important;
   box-shadow: none !important;
 }
+
+/* Mobile-first optimization */
+.app {
+  max-width: 560px;
+  padding: 12px 10px 24px;
+}
+
+.app-header {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.kicker {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+}
+
+h1 {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.sub {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.app-main {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.panel {
+  gap: 12px;
+}
+
+.panel.right {
+  order: 1;
+}
+
+.panel.left {
+  order: 2;
+}
+
+.card {
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.card h2 {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.row {
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.row > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+input[type="file"],
+input[type="text"],
+select,
+button {
+  width: 100%;
+  min-height: 44px;
+  font-size: 14px;
+}
+
+.legend {
+  width: 100%;
+}
+
+.legend-item {
+  font-size: 11px;
+  padding: 5px 9px;
+}
+
+.tabs {
+  width: 100%;
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.tab {
+  min-height: 34px;
+  width: 100%;
+  padding: 5px 4px;
+  font-size: 11px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-list {
+  max-height: 260px;
+}
+
+.player {
+  min-height: 44px;
+  border-radius: 10px;
+}
+
+.pitch-wrap {
+  padding: 10px;
+  border-radius: 16px;
+}
+
+.pitch {
+  aspect-ratio: 3 / 4.3;
+  border-radius: 12px;
+}
+
+.position {
+  width: 52px;
+  height: 52px;
+  font-size: 11px;
+}
+
+@media (min-width: 900px) {
+  .app {
+    max-width: 1200px;
+    padding: 26px 20px 36px;
+  }
+
+  .app-header {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-size: 34px;
+  }
+
+  .app-main {
+    grid-template-columns: 1fr 1.35fr;
+    gap: 20px;
+  }
+
+  .panel.right {
+    order: 2;
+  }
+
+  .panel.left {
+    order: 1;
+  }
+
+  .row > * {
+    flex: 0 1 auto;
+  }
+
+  input[type="file"],
+  input[type="text"],
+  select,
+  button {
+    width: auto;
+    min-height: 38px;
+  }
+
+  .pitch {
+    aspect-ratio: 3 / 4;
+  }
+
+  .position {
+    width: 58px;
+    height: 58px;
+    font-size: 12px;
+  }
+}
+
+/* Force mobile view on all screen sizes */
+.app {
+  max-width: 560px !important;
+  padding: 12px 10px 24px !important;
+}
+
+.app-header {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  margin-bottom: 14px !important;
+}
+
+h1 {
+  font-size: 24px !important;
+}
+
+.app-main {
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+}
+
+.panel.right {
+  order: 1 !important;
+}
+
+.panel.left {
+  order: 2 !important;
+}
+
+.card {
+  border-radius: 14px !important;
+  padding: 12px !important;
+}
+
+.row {
+  flex-wrap: wrap !important;
+}
+
+.row > * {
+  flex: 1 1 100% !important;
+}
+
+input[type="file"],
+input[type="text"],
+select,
+button {
+  width: 100% !important;
+  min-height: 44px !important;
+}
+
+.pitch {
+  aspect-ratio: 3 / 4.3 !important;
+}
+
+.position {
+  width: 52px !important;
+  height: 52px !important;
+  font-size: 11px !important;
+}
+
+/* NanumSquare global font */
+@font-face {
+  font-family: 'NanumSquare';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2107@1.1/NanumSquareRegular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NanumSquare';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2107@1.1/NanumSquareBold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+}
+
+* {
+  font-family: 'NanumSquare', sans-serif !important;
+}
+
+.status-box {
+  display: inline-block;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f4efe4;
+  border: 1px solid #ded5c6;
+  color: #5e5e55;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.status-box.error {
+  border-color: #e2b7b0;
+  background: #fff1ee;
+  color: #b93d2d;
+}
+
+/* Layout tune: linear flow order and compact quarter controls */
+.flow-main {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+.flow-main > .card,
+.flow-main > .pitch-wrap {
+  width: 100%;
+}
+
+.flow-main .card {
+  padding: 12px !important;
+  border-radius: 14px !important;
+}
+
+.flow-main .row {
+  gap: 8px;
+}
+
+.flow-main .row > * {
+  flex: 1 1 auto !important;
+}
+
+#ocrBtn,
+#addMerc {
+  width: auto !important;
+  min-width: 110px;
+}
+
+.quarter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.quarter-header h2 {
+  margin: 0;
+}
+
+#addQuarter {
+  width: auto !important;
+  min-height: 34px !important;
+  min-width: 88px;
+  padding: 6px 10px !important;
+  flex: 0 0 auto !important;
+}
+
+.quarter-card .tabs {
+  margin-bottom: 8px;
+}
+
+.controls .row.wrap {
+  align-items: flex-end;
+}
+
+.controls label {
+  flex: 1 1 220px;
+}
+
+#lockToggle,
+#captureBtn,
+#copyBtn {
+  width: auto !important;
+  min-width: 84px;
+  flex: 0 0 auto !important;
+}
+
+.pitch-wrap {
+  margin-top: 0;
+}
+
+/* UI cleanup request: legend near pitch + 70% field transparency */
+.legend-near-pitch {
+  margin-top: -2px;
+  margin-bottom: 2px;
+}
+
+.pitch {
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(43, 124, 63, 0.7) 0,
+    rgba(43, 124, 63, 0.7) 12%,
+    rgba(38, 108, 55, 0.7) 12%,
+    rgba(38, 108, 55, 0.7) 24%
+  ) !important;
+}
+
+.edit-player {
+  background: transparent;
+  border: none;
+  color: #24528f;
+  font-weight: 700;
+  font-size: 12px;
+}
