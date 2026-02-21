@@ -19,7 +19,7 @@ const formations = {
     { id: 'df3', role: 'DF', x: 62, y: 72 },
     { id: 'df4', role: 'DF', x: 82, y: 72 },
     { id: 'mf1', role: 'MF', x: 28, y: 48 },
-    { id: 'mf2', role: 'MF', x: 50, y: 52 },
+    { id: 'mf2', role: 'MF', x: 50, y: 54 },
     { id: 'mf3', role: 'MF', x: 72, y: 48 },
     { id: 'fw1', role: 'FW', x: 20, y: 24 },
     { id: 'fw2', role: 'FW', x: 50, y: 18 },
@@ -73,6 +73,7 @@ const state = {
   quarters: [],
   activeQuarterId: null,
   selectedSlotId: null,
+  selectedPlayerId: null,
   copySourceId: null
 };
 
@@ -82,6 +83,9 @@ const el = {
   ocrStatus: document.getElementById('ocrStatus'),
   playerStatus: document.getElementById('playerStatus'),
   squadStatus: document.getElementById('squadStatus'),
+  teamName: document.getElementById('teamName'),
+  matchDate: document.getElementById('matchDate'),
+  opponentName: document.getElementById('opponentName'),
   mercName: document.getElementById('mercName'),
   mercType: document.getElementById('mercType'),
   addMerc: document.getElementById('addMerc'),
@@ -104,6 +108,29 @@ const el = {
 
 function uid() {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getTodayDateString() {
+  const now = new Date();
+  const tzOffsetMs = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - tzOffsetMs).toISOString().slice(0, 10);
+}
+
+function getMatchMeta() {
+  const team = (el.teamName?.value || '').trim() || '우리팀';
+  const opponent = (el.opponentName?.value || '').trim();
+  const matchDate = (el.matchDate?.value || '').trim() || getTodayDateString();
+  const matchTitle = opponent ? `${team} vs ${opponent}` : team;
+  return { team, opponent, matchDate, matchTitle };
+}
+
+function formatDateForHeader(dateText) {
+  const value = (dateText || '').trim();
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return value;
+  }
+  return `${match[2]}/${match[3]}`;
 }
 
 function getQuarter() {
@@ -167,14 +194,49 @@ function refreshFormationSelect() {
 
 function renderQuarterTabs() {
   el.quarterTabs.innerHTML = '';
-  state.quarters.forEach((quarter) => {
+  state.quarters.forEach((quarter, index) => {
     const tab = document.createElement('button');
     tab.type = 'button';
     tab.className = `tab ${quarter.id === state.activeQuarterId ? 'active' : ''}`;
-    tab.textContent = `${quarter.name}${quarter.locked ? ' 🔒' : ''}`;
+
+    const label = document.createElement('span');
+    label.className = 'tab-label';
+    label.textContent = `${quarter.name}${quarter.locked ? ' 🔒' : ''}`;
+    tab.appendChild(label);
+
+    if (index >= 4) {
+      const remove = document.createElement('span');
+      remove.className = 'tab-delete';
+      remove.textContent = '×';
+      remove.title = '쿼터 삭제';
+      remove.setAttribute('role', 'button');
+      remove.setAttribute('aria-label', `${quarter.name} 삭제`);
+      remove.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const ok = window.confirm(`${quarter.name}를 삭제할까요?`);
+        if (!ok) {
+          return;
+        }
+
+        state.quarters = state.quarters.filter((q) => q.id !== quarter.id);
+        if (state.activeQuarterId === quarter.id) {
+          const fallback = state.quarters[Math.max(0, index - 1)] || state.quarters[0] || null;
+          state.activeQuarterId = fallback ? fallback.id : null;
+        }
+        state.selectedSlotId = null;
+        state.selectedPlayerId = null;
+        setSquadStatus(`${quarter.name} 삭제 완료`);
+        render();
+      });
+      tab.appendChild(remove);
+    }
+
     tab.addEventListener('click', () => {
       state.activeQuarterId = quarter.id;
       state.selectedSlotId = null;
+      state.selectedPlayerId = null;
       render();
     });
     el.quarterTabs.appendChild(tab);
@@ -248,7 +310,7 @@ function renderPlayerStrip() {
   if (state.players.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'muted';
-    empty.textContent = 'no list.';
+    empty.textContent = '<no list>';
     el.playerStrip.appendChild(empty);
     return;
   }
@@ -256,8 +318,9 @@ function renderPlayerStrip() {
   state.players.forEach((player) => {
     const chip = document.createElement('button');
     const isAssigned = assigned.has(player.id);
+    const isSelected = state.selectedPlayerId === player.id;
     chip.type = 'button';
-    chip.className = `player-chip ${player.type === 'merc' ? 'merc' : 'attend'}${isAssigned || locked ? ' disabled' : ''}`;
+    chip.className = `player-chip ${player.type === 'merc' ? 'merc' : 'attend'}${isSelected ? ' selected' : ''}${isAssigned || locked ? ' disabled' : ''}`;
     chip.textContent = player.name;
 
     if (!isAssigned && !locked) {
@@ -289,6 +352,9 @@ function removePlayer(playerId) {
   if (state.selectedSlotId) {
     state.selectedSlotId = null;
   }
+  if (state.selectedPlayerId === playerId) {
+    state.selectedPlayerId = null;
+  }
   setPlayerStatus(`${player ? player.name : '선수'} 삭제 완료`);
   render();
 }
@@ -314,6 +380,15 @@ function renamePlayer(playerId, nextNameRaw) {
   render();
 }
 
+function placePlayerToSlot(quarter, slotId, playerId) {
+  Object.keys(quarter.assignments).forEach((id) => {
+    if (quarter.assignments[id] === playerId) {
+      quarter.assignments[id] = null;
+    }
+  });
+  quarter.assignments[slotId] = playerId;
+}
+
 function assignSelectedPlayer(playerId) {
   const quarter = getQuarter();
   if (quarter.locked) {
@@ -321,19 +396,14 @@ function assignSelectedPlayer(playerId) {
     return;
   }
   if (!state.selectedSlotId) {
-    setSquadStatus('먼저 스쿼드의 포지션을 클릭해 주세요.', true);
+    state.selectedPlayerId = state.selectedPlayerId === playerId ? null : playerId;
+    render();
     return;
   }
 
-  const slotIds = Object.keys(quarter.assignments);
-  slotIds.forEach((slotId) => {
-    if (quarter.assignments[slotId] === playerId) {
-      quarter.assignments[slotId] = null;
-    }
-  });
-
-  quarter.assignments[state.selectedSlotId] = playerId;
+  placePlayerToSlot(quarter, state.selectedSlotId, playerId);
   state.selectedSlotId = null;
+  state.selectedPlayerId = null;
   render();
 }
 
@@ -342,11 +412,7 @@ function renderPitch() {
   const slots = getFormationSlots(quarter);
 
   el.pitch.innerHTML = '';
-  const centerCircle = document.createElement('div');
-  centerCircle.className = 'center-circle';
-  el.pitch.appendChild(centerCircle);
-
-  slots.forEach((slot, idx) => {
+  slots.forEach((slot) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     const role = roleClass[slot.role] || 'mf';
@@ -365,12 +431,29 @@ function renderPitch() {
         setSquadStatus('잠금 상태에서는 수정할 수 없습니다.', true);
         return;
       }
+      if (state.selectedPlayerId) {
+        placePlayerToSlot(quarter, slot.id, state.selectedPlayerId);
+        state.selectedPlayerId = null;
+        state.selectedSlotId = null;
+        render();
+        return;
+      }
       if (player) {
         quarter.assignments[slot.id] = null;
         if (state.selectedSlotId === slot.id) {
           state.selectedSlotId = null;
         }
+        if (state.selectedPlayerId === player.id) {
+          state.selectedPlayerId = null;
+        }
       } else {
+        if (state.selectedPlayerId) {
+          placePlayerToSlot(quarter, slot.id, state.selectedPlayerId);
+          state.selectedPlayerId = null;
+          state.selectedSlotId = null;
+          render();
+          return;
+        }
         state.selectedSlotId = state.selectedSlotId === slot.id ? null : slot.id;
       }
       render();
@@ -748,6 +831,7 @@ function changeFormation() {
   });
   quarter.assignments = assignments;
   state.selectedSlotId = null;
+  state.selectedPlayerId = null;
 
   setSquadStatus(`${quarter.name} 포메이션 변경: ${next}`);
   render();
@@ -758,34 +842,132 @@ function toggleLock() {
   quarter.locked = !quarter.locked;
   if (quarter.locked) {
     state.selectedSlotId = null;
+    state.selectedPlayerId = null;
   }
   setSquadStatus(`${quarter.name} ${quarter.locked ? '잠금 완료' : '잠금 해제'}`);
   render();
 }
 
 async function captureCurrentQuarter() {
-  if (typeof html2canvas === 'undefined') {
-    setSquadStatus('캡처 라이브러리를 불러오지 못했습니다.', true);
-    return;
-  }
   const quarter = getQuarter();
+  const slots = getFormationSlots(quarter);
+
+  const roleFill = {
+    FW: '#e04c3a',
+    MF: '#37a64a',
+    DF: '#2c6be0',
+    GK: '#f2c94c'
+  };
+
+  const loadImage = (src) => new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(`이미지 로드 실패: ${src}`));
+    image.src = src;
+  });
+
+  const drawSlot = (ctx, x, y, radius, label, fillColor, empty) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = empty ? 'rgba(255,255,255,0.24)' : fillColor;
+    ctx.fill();
+    ctx.lineWidth = empty ? 3 : 5;
+    ctx.setLineDash(empty ? [8, 6] : []);
+    ctx.strokeStyle = empty ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.95)';
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    let fontSize = Math.floor(radius * 0.44);
+    if (label.length >= 6) {
+      fontSize = Math.floor(fontSize * 0.82);
+    } else if (label.length >= 4) {
+      fontSize = Math.floor(fontSize * 0.9);
+    }
+    ctx.font = `700 ${Math.max(13, fontSize)}px sans-serif`;
+    ctx.fillText(label, x, y);
+    ctx.restore();
+  };
 
   try {
-    setSquadStatus('캡처 생성 중...');
-    const node = document.querySelector('.pitch-wrap');
-    const canvas = await html2canvas(node, {
-      backgroundColor: null,
-      useCORS: true,
-      scale: 2
+    setSquadStatus('이미지 생성 중...');
+    const canvas = document.createElement('canvas');
+    const width = 1080;
+    const height = 1440;
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Canvas context를 생성할 수 없습니다.');
+    }
+
+    try {
+      const pitchImage = await loadImage('./pitch.jpg');
+      ctx.drawImage(pitchImage, 0, 0, width, height);
+    } catch (imageError) {
+      console.error(imageError);
+      ctx.fillStyle = '#2b7c3f';
+      ctx.fillRect(0, 0, width, height);
+    }
+
+    const meta = getMatchMeta();
+    const leftText = `${meta.matchTitle} (${formatDateForHeader(meta.matchDate)})`;
+    const rightText = `${quarter.name} | ${quarter.formation}`;
+
+    const drawHeaderBox = (x, y, w, h, text, align) => {
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,0.30)';
+      ctx.fillRect(x, y, w, h);
+      ctx.beginPath();
+      ctx.rect(x + 14, y, w - 28, h);
+      ctx.clip();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 32px sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = align;
+      const textX = align === 'right' ? x + w - 18 : x + 18;
+      ctx.fillText(text, textX, y + h / 2);
+      ctx.restore();
+    };
+
+    const pad = 24;
+    const boxH = 70;
+    ctx.font = '700 32px sans-serif';
+    const rightDesiredW = Math.max(250, Math.ceil(ctx.measureText(rightText).width + 40));
+    const rightW = Math.min(420, rightDesiredW);
+    const gap = 18;
+    const leftMaxW = width - (pad * 2) - rightW - gap;
+    const leftDesiredW = Math.max(320, Math.ceil(ctx.measureText(leftText).width + 40));
+    const leftW = Math.max(220, Math.min(leftMaxW, leftDesiredW));
+    const rightX = width - pad - rightW;
+
+    drawHeaderBox(pad, pad, leftW, boxH, leftText, 'left');
+    drawHeaderBox(rightX, pad, rightW, boxH, rightText, 'right');
+
+    const radius = Math.round(width * 0.054);
+    slots.forEach((slot) => {
+      const x = (slot.x / 100) * width;
+      const y = (slot.y / 100) * height;
+      const playerId = quarter.assignments[slot.id];
+      const player = state.players.find((p) => p.id === playerId);
+      const role = slot.role || 'MF';
+      const label = player ? player.name : slot.role;
+      drawSlot(ctx, x, y, radius, label, roleFill[role] || roleFill.MF, !player);
     });
+
     const link = document.createElement('a');
     link.href = canvas.toDataURL('image/png');
     link.download = `${quarter.name}_${quarter.formation}.png`;
     link.click();
-    setSquadStatus(`${quarter.name} 캡처 다운로드 완료`);
+    setSquadStatus(`${quarter.name} 스쿼드 이미지 다운로드 완료`);
   } catch (error) {
     console.error(error);
-    setSquadStatus('캡처 생성에 실패했습니다.', true);
+    setSquadStatus('스쿼드 이미지 생성에 실패했습니다.', true);
   }
 }
 
@@ -795,6 +977,7 @@ function addQuarter() {
   state.quarters.push(quarter);
   state.activeQuarterId = quarter.id;
   state.selectedSlotId = null;
+  state.selectedPlayerId = null;
   setSquadStatus(`${quarter.name} 생성 완료`);
   render();
 }
@@ -815,6 +998,7 @@ function copySquadToCurrent() {
   target.formation = source.formation;
   target.assignments = { ...source.assignments };
   state.selectedSlotId = null;
+  state.selectedPlayerId = null;
   setSquadStatus(`${source.name} 스쿼드를 ${target.name}에 복사했습니다.`);
   render();
 }
@@ -837,9 +1021,44 @@ function bindEvents() {
     el.copyBtn.disabled = !target || target.locked;
   });
   el.copyBtn.addEventListener('click', copySquadToCurrent);
+
+  el.modalCancel.addEventListener('click', closePlayerModal);
+  el.playerModal.addEventListener('click', (event) => {
+    if (event.target.classList.contains('modal-backdrop')) {
+      closePlayerModal();
+    }
+  });
+  el.modalEdit.addEventListener('click', () => {
+    const player = state.players.find((p) => p.id === modalPlayerId);
+    if (!player) {
+      closePlayerModal();
+      return;
+    }
+    const nextName = window.prompt('수정할 이름을 입력해 주세요.', player.name);
+    if (nextName === null) {
+      return;
+    }
+    renamePlayer(player.id, nextName);
+    closePlayerModal();
+  });
+  el.modalDelete.addEventListener('click', () => {
+    const player = state.players.find((p) => p.id === modalPlayerId);
+    if (!player) {
+      closePlayerModal();
+      return;
+    }
+    const ok = window.confirm(`${player.name} 선수를 삭제할까요?`);
+    if (ok) {
+      removePlayer(player.id);
+    }
+    closePlayerModal();
+  });
 }
 
 function init() {
+  if (el.matchDate && !el.matchDate.value) {
+    el.matchDate.value = getTodayDateString();
+  }
   for (let i = 1; i <= 4; i += 1) {
     state.quarters.push(createQuarter(i));
   }

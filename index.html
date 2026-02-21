@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SOCCER SQUAD BUILDER</title>
   <link rel="stylesheet" href="style.css" />
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6055672008627698"
+    crossorigin="anonymous"></script>
 </head>
 <body>
   <div class="app">
@@ -17,8 +19,26 @@
     </header>
 
     <main class="app-main flow-main">
+      <div class="card match-meta-card">
+        <h2>0. 경기 정보</h2>
+        <div class="row wrap match-meta-row">
+          <label class="meta-team">
+            우리팀 이름
+            <input id="teamName" type="text" placeholder="우리팀" />
+          </label>
+          <label class="meta-opponent">
+            상대팀 이름
+            <input id="opponentName" type="text" placeholder="상대팀 (선택)" />
+          </label>
+          <label class="meta-date">
+            경기 날짜
+            <input id="matchDate" type="date" />
+          </label>
+        </div>
+      </div>
+
       <div class="card">
-        <h2>선수 불러오기</h2>
+        <h2>1. 선수 등록</h2>
         <p class="muted">카카오톡 참석자 캡쳐 > 업로드 > 참석 명단 Scan 클릭!</p>
         <div class="row">
           <input id="imageInput" type="file" accept="image/*" />
@@ -30,16 +50,16 @@
       </div>
 
       <div class="card compact-player-card">
-        <h2>용병 추가 / 선수 리스트</h2>
+        <h2>2. 선수 확인 / 용병 추가</h2>
         <div class="row inline-row">
-          <input id="mercName" type="text" placeholder="용병/선수 이름" />
+          <input id="mercName" type="text" placeholder="용병/선수 이름 (세글자 추천)" />
           <select id="mercType">
             <option value="attend" selected>멤버</option>
             <option value="merc">용병</option>
           </select>
         </div>
         <div class="row">
-          <button id="addMerc" class="secondary">용병/선수 추가</button>
+          <button id="addMerc" class="secondary">멤버/용병 추가</button>
         </div>
         <div class="row">
           <span id="playerStatus" class="status status-box">선수 목록 대기 중</span>
@@ -48,21 +68,17 @@
       </div>
       <div class="card quarter-card controls">
         <div class="quarter-header">
-          <h2>쿼터 선택</h2>
+          <h2>3. 쿼터별 포메이션 설정</h2>
           <button id="addQuarter" class="secondary">쿼터 추가</button>
         </div>
         <div id="quarterTabs" class="tabs"></div>
-        <div class="row wrap">
-          <label>
+        <div class="row quarter-inline-controls">
+          <label class="field-control">
             포메이션
             <select id="formationSelect"></select>
           </label>
-          <button id="lockToggle" class="secondary">잠금</button>
-          <button id="captureBtn" class="secondary">캡쳐</button>
-        </div>
-        <div class="row wrap">
-          <label>
-            다른 스쿼드 복사
+          <label class="field-control">
+            다른 쿼터로 스쿼드 복사
             <select id="copyFrom"></select>
           </label>
           <button id="copyBtn" class="primary">복사</button>
@@ -75,11 +91,14 @@
       <div class="pitch-row">
         <div class="pitch-stack">
           <div class="player-strip-card">
-            <h3>쿼터별 스쿼드 설정</h3>
-            <p class="muted">포지션 선택 후, 아래 이름을 눌러 배치하세요.</p>
+            <p class="muted">선수(포지션) 클릭 후 포지션(선수)을 클릭해 배치하세요.</p>
             <div class="player-strip" id="playerStrip"></div>
           </div>
           <div class="pitch-wrap">
+            <div class="pitch-actions">
+              <button id="lockToggle" class="secondary">잠금</button>
+              <button id="captureBtn" class="secondary">캡쳐</button>
+            </div>
             <div id="pitch" class="pitch"></div>
           </div>
         </div>

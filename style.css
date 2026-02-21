@@ -130,6 +130,7 @@ h1 {
 }
 
 input[type="text"],
+input[type="date"],
 select {
   padding: 8px 10px;
   border-radius: 10px;
@@ -254,12 +255,44 @@ button:hover {
 }
 
 .tab {
+  position: relative;
   padding: 6px 12px;
   border-radius: 999px;
   background: #eee6d8;
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-label {
+  display: block;
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-delete {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  color: #ffffff;
+  background: #e6e2e2;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  z-index: 2;
 }
 
 .tab.active {
@@ -276,48 +309,18 @@ button:hover {
 
 .pitch-wrap {
   background: #1f1f1b;
-  border-radius: 24px;
-  padding: 16px;
+  border-radius: 12px;
+  padding: 25px;
 }
 
 .pitch {
   position: relative;
   width: 100%;
   aspect-ratio: 3 / 4;
-  background: repeating-linear-gradient(
-    0deg,
-    var(--pitch) 0,
-    var(--pitch) 12%,
-    var(--pitch-dark) 12%,
-    var(--pitch-dark) 24%
-  );
+  background: var(--pitch);
   border-radius: 18px;
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35);
   overflow: hidden;
-}
-
-.pitch::before,
-.pitch::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--line);
-}
-
-.pitch::before { top: 50%; }
-.pitch::after { top: 12%; }
-
-.center-circle {
-  position: absolute;
-  width: 120px;
-  height: 120px;
-  border: 2px solid var(--line);
-  border-radius: 50%;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
 }
 
 .position {
@@ -325,6 +328,7 @@ button:hover {
   width: 58px;
   height: 58px;
   border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.95);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -449,11 +453,46 @@ h1 {
 
 input[type="file"],
 input[type="text"],
+input[type="date"],
 select,
 button {
   width: 100%;
   min-height: 44px;
   font-size: 14px;
+}
+
+.match-meta-row label {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.match-meta-row {
+  flex-wrap: nowrap !important;
+  align-items: flex-end;
+}
+
+.match-meta-row .meta-team {
+  flex: 0 0 40%;
+  max-width: 40%;
+}
+
+.match-meta-row .meta-opponent {
+  flex: 0 0 40%;
+  max-width: 40%;
+}
+
+.match-meta-row .meta-date {
+  flex: 0 0 30%;
+  max-width: 30%;
+}
+
+.match-meta-row input[type="text"],
+.match-meta-row input[type="date"] {
+  height: 40px;
+  min-height: 40px;
 }
 
 .legend {
@@ -478,9 +517,6 @@ button {
   padding: 5px 4px;
   font-size: 11px;
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .player-list {
@@ -493,7 +529,7 @@ button {
 }
 
 .pitch-wrap {
-  padding: 10px;
+  padding: 5px;
   border-radius: 16px;
 }
 
@@ -663,7 +699,7 @@ button {
   padding: 4px 6px;
   font-size: 11px;
   font-weight: 700;
-  border: 1px solid transparent;
+  border: 2px solid transparent;
   background: #f3efe6;
   color: #2b2b26;
   cursor: pointer;
@@ -672,11 +708,26 @@ button {
 }
 
 .player-chip.attend {
-  border-color: #e2b84a;
+  border-color: #d5a632;
+  background: #fff6da;
 }
 
 .player-chip.merc {
   border-color: #32475c;
+  background: #e8eef6;
+}
+
+.player-chip.selected {
+  transform: translateY(-1px) scale(1.04);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.95), 0 6px 12px rgba(0, 0, 0, 0.18);
+}
+
+.player-chip.attend.selected {
+  box-shadow: 0 0 0 3px rgba(226, 184, 74, 0.35), 0 6px 12px rgba(0, 0, 0, 0.18);
+}
+
+.player-chip.merc.selected {
+  box-shadow: 0 0 0 3px rgba(50, 71, 92, 0.35), 0 6px 12px rgba(0, 0, 0, 0.18);
 }
 
 .player-chip.disabled {
@@ -733,33 +784,75 @@ button {
   flex: 1 1 220px;
 }
 
-#lockToggle,
-#captureBtn,
 #copyBtn {
   width: auto !important;
   min-width: 84px;
   flex: 0 0 auto !important;
 }
 
+.quarter-inline-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.quarter-inline-controls .field-control {
+  flex: 0 0 27%;
+  min-width: 110px;
+  max-width: 27%;
+}
+
+.quarter-inline-controls .field-control select {
+  width: 100%;
+}
+
+.quarter-inline-controls .field-control:nth-of-type(2) {
+  margin-left: 115px;
+}
+
+#lockToggle,
+#captureBtn {
+  width: auto !important;
+  min-width: 84px;
+  flex: 0 0 auto !important;
+}
+
 .pitch-wrap {
+  position: relative;
   margin-top: 0;
+}
+
+.pitch-actions {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+}
+
+.pitch-actions button {
+  min-height: 34px !important;
+  padding: 6px 10px !important;
+  background: rgba(255, 255, 255, 0.82);
+  color: #1f1f1b;
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(2px);
 }
 
 /* UI cleanup request: legend near pitch + 70% field transparency */
 .legend-near-pitch {
-  margin-top: -2px;
+  margin-top: 0px;
   margin-bottom: 2px;
 }
 
 .pitch {
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(43, 124, 63, 0.7) 0,
-    rgba(43, 124, 63, 0.7) 12%,
-    rgba(38, 108, 55, 0.7) 12%,
-    rgba(38, 108, 55, 0.7) 24%
-  ) !important;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.20), rgba(255, 255, 255, 0.20)),
+    url('./pitch.jpg') center / cover no-repeat !important;
 }
+
 
 /* Force mobile-like width on all screens */
 .app {
