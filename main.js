@@ -83,8 +83,10 @@ const el = {
   playerStatus: document.getElementById('playerStatus'),
   squadStatus: document.getElementById('squadStatus'),
   mercName: document.getElementById('mercName'),
+  mercType: document.getElementById('mercType'),
   addMerc: document.getElementById('addMerc'),
   playerList: document.getElementById('playerList'),
+  playerStrip: document.getElementById('playerStrip'),
   addQuarter: document.getElementById('addQuarter'),
   quarterTabs: document.getElementById('quarterTabs'),
   formationSelect: document.getElementById('formationSelect'),
@@ -187,7 +189,7 @@ function renderPlayerList() {
   if (visible.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'muted';
-    empty.textContent = '현재 쿼터에서 배치 가능한 선수가 없습니다.';
+    empty.textContent = '';
     el.playerList.appendChild(empty);
     return;
   }
@@ -200,18 +202,24 @@ function renderPlayerList() {
     name.className = 'player-name';
     name.textContent = player.name;
 
-    const meta = document.createElement('div');
-    meta.className = 'player-meta';
-
     const tag = document.createElement('span');
     tag.className = `tag ${player.type === 'merc' ? 'merc' : 'attend'}`;
-    tag.textContent = player.type === 'merc' ? '용병' : '참석';
+    tag.textContent = player.type === 'merc' ? '용병' : '멤버';
+
+    const left = document.createElement('div');
+    left.className = 'player-left';
+    left.appendChild(name);
+    left.appendChild(tag);
+
+    const meta = document.createElement('div');
+    meta.className = 'player-meta';
 
     const remove = document.createElement('button');
     const edit = document.createElement('button');
     edit.type = 'button';
     edit.className = 'edit-player';
-    edit.textContent = '수정';
+    edit.setAttribute('aria-label', '선수 이름 수정');
+    edit.textContent = '✎';
     edit.addEventListener('click', (event) => {
       event.stopPropagation();
       const nextName = window.prompt('수정할 이름을 입력해 주세요.', player.name);
@@ -223,16 +231,16 @@ function renderPlayerList() {
 
     remove.type = 'button';
     remove.className = 'remove-player';
-    remove.textContent = '삭제';
+    remove.setAttribute('aria-label', '선수 삭제');
+    remove.textContent = '🗑';
     remove.addEventListener('click', (event) => {
       event.stopPropagation();
       removePlayer(player.id);
     });
 
-    meta.appendChild(tag);
     meta.appendChild(edit);
     meta.appendChild(remove);
-    row.appendChild(name);
+    row.appendChild(left);
     row.appendChild(meta);
 
     row.addEventListener('click', () => {
@@ -240,6 +248,39 @@ function renderPlayerList() {
     });
 
     el.playerList.appendChild(row);
+  });
+}
+
+function renderPlayerStrip() {
+  const quarter = getQuarter();
+  const assigned = getAssignedPlayerIds(quarter);
+  const locked = quarter.locked;
+
+  el.playerStrip.innerHTML = '';
+  if (state.players.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = '확정된 선수가 없습니다.';
+    el.playerStrip.appendChild(empty);
+    return;
+  }
+
+  state.players.forEach((player) => {
+    const chip = document.createElement('button');
+    const isAssigned = assigned.has(player.id);
+    chip.type = 'button';
+    chip.className = `player-chip ${player.type === 'merc' ? 'merc' : 'attend'}${isAssigned || locked ? ' disabled' : ''}`;
+    chip.textContent = player.name;
+
+    if (!isAssigned && !locked) {
+      chip.addEventListener('click', () => {
+        assignSelectedPlayer(player.id);
+      });
+    } else {
+      chip.disabled = true;
+    }
+
+    el.playerStrip.appendChild(chip);
   });
 }
 
@@ -352,10 +393,10 @@ function renderPitch() {
 }
 
 function renderCopyOptions() {
-  const active = getQuarter();
+  const source = getQuarter();
   el.copyFrom.innerHTML = '';
 
-  const options = state.quarters.filter((q) => q.id !== active.id);
+  const options = state.quarters.filter((q) => q.id !== source.id);
   if (options.length === 0) {
     const option = document.createElement('option');
     option.value = '';
@@ -379,7 +420,8 @@ function renderCopyOptions() {
   }
   el.copyFrom.value = state.copySourceId;
   el.copyFrom.disabled = false;
-  el.copyBtn.disabled = active.locked;
+  const target = state.quarters.find((q) => q.id === state.copySourceId);
+  el.copyBtn.disabled = !target || target.locked;
 }
 
 function renderLockState() {
@@ -393,6 +435,7 @@ function render() {
   renderQuarterTabs();
   renderPitch();
   renderPlayerList();
+  renderPlayerStrip();
   renderCopyOptions();
   renderLockState();
 }
@@ -648,7 +691,7 @@ async function readAttendFromImage() {
     let names = [];
 
     try {
-      setOcrStatus('OCR.Space(무료) 분석 중...');
+      setOcrStatus('참석자 명단 확인중...');
       const ocrSpaceText = await recognizeWithOcrSpace(processed, apiKey);
       names = parseNamesFromOcrText(ocrSpaceText);
     } catch (spaceError) {
@@ -684,16 +727,17 @@ async function readAttendFromImage() {
 function addMercenary() {
   const name = el.mercName.value.trim();
   if (!name) {
-    setPlayerStatus('용병 이름을 입력해 주세요.', true);
+    setPlayerStatus('이름을 입력해 주세요.', true);
     return;
   }
-  const added = addPlayersByNames([name], 'merc');
+  const type = el.mercType.value === 'merc' ? 'merc' : 'attend';
+  const added = addPlayersByNames([name], type);
   if (!added) {
     setPlayerStatus('이미 존재하는 이름입니다.', true);
     return;
   }
   el.mercName.value = '';
-  setPlayerStatus('용병 추가 완료');
+  setPlayerStatus(`${type === 'merc' ? '용병' : 'Member'} 추가 완료`);
   render();
 }
 
@@ -768,10 +812,10 @@ function addQuarter() {
 }
 
 function copySquadToCurrent() {
-  const target = getQuarter();
-  const source = state.quarters.find((q) => q.id === el.copyFrom.value);
+  const source = getQuarter();
+  const target = state.quarters.find((q) => q.id === el.copyFrom.value);
 
-  if (!source) {
+  if (!target) {
     setSquadStatus('복사할 쿼터를 선택해 주세요.', true);
     return;
   }
@@ -783,7 +827,7 @@ function copySquadToCurrent() {
   target.formation = source.formation;
   target.assignments = { ...source.assignments };
   state.selectedSlotId = null;
-  setSquadStatus(`${source.name} 스쿼드를 ${target.name}로 복사했습니다.`);
+  setSquadStatus(`${source.name} 스쿼드를 ${target.name}에 복사했습니다.`);
   render();
 }
 
@@ -801,6 +845,8 @@ function bindEvents() {
   el.captureBtn.addEventListener('click', captureCurrentQuarter);
   el.copyFrom.addEventListener('change', (event) => {
     state.copySourceId = event.target.value;
+    const target = state.quarters.find((q) => q.id === state.copySourceId);
+    el.copyBtn.disabled = !target || target.locked;
   });
   el.copyBtn.addEventListener('click', copySquadToCurrent);
 }

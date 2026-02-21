@@ -12,27 +12,31 @@
       <div>
         <p class="kicker">SOCCER SQUAD BUILDER</p>
         <h1>11명 축구 스쿼드</h1>
-        <p class="sub">포지션을 클릭하고, 아래 선수 리스트에서 선수를 선택해 배치하세요.</p>
+        <p class="sub">포지션을 클릭하고, 상단 이름 버튼에서 선수를 선택해 배치하세요.</p>
       </div>
     </header>
 
     <main class="app-main flow-main">
       <div class="card">
         <h2>선수 불러오기</h2>
-        <p class="muted">명단 이미지를 업로드하면 이름 리스트를 자동으로 불러옵니다.</p>
+        <p class="muted">카카오톡 참석자를 캡쳐해서 업로드하면 이름 리스트를 자동으로 불러옵니다.</p>
         <div class="row">
           <input id="imageInput" type="file" accept="image/*" />
-          <button id="ocrBtn" class="primary">참석 명단 읽기</button>
+          <button id="ocrBtn" class="primary">참석 명단 Scan</button>
         </div>
         <div class="row">
           <span id="ocrStatus" class="status status-box">대기 중</span>
         </div>
       </div>
 
-      <div class="card">
+      <div class="card compact-player-card">
         <h2>용병 추가 / 선수 리스트</h2>
         <div class="row">
           <input id="mercName" type="text" placeholder="용병/선수 이름" />
+          <select id="mercType">
+            <option value="attend" selected>Member</option>
+            <option value="merc">용병</option>
+          </select>
           <button id="addMerc" class="secondary">용병/선수 추가</button>
         </div>
         <div class="row">
@@ -40,7 +44,6 @@
         </div>
         <div class="player-list" id="playerList"></div>
       </div>
-
       <div class="card quarter-card controls">
         <div class="quarter-header">
           <h2>쿼터 선택</h2>
@@ -74,8 +77,17 @@
         <span class="legend-item gk">GK</span>
       </div>
 
-      <div class="pitch-wrap">
-        <div id="pitch" class="pitch"></div>
+      <div class="pitch-row">
+        <div class="pitch-stack">
+          <div class="player-strip-card">
+            <h2>확정 선수 선택</h2>
+            <p class="muted">포지션 선택 후, 아래 이름을 눌러 배치하세요.</p>
+            <div class="player-strip" id="playerStrip"></div>
+          </div>
+          <div class="pitch-wrap">
+            <div id="pitch" class="pitch"></div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
