@@ -40,7 +40,7 @@
       <div class="card">
         <h2>1. 선수 등록</h2>
         <p class="muted">카카오톡 참석자 캡쳐 > 업로드 > 참석 명단 Scan 클릭!</p>
-        <div class="row">
+        <div class="row ocr-row">
           <input id="imageInput" type="file" accept="image/*" />
           <button id="ocrBtn" class="primary">참석 명단 Scan</button>
         </div>
@@ -51,18 +51,16 @@
 
       <div class="card compact-player-card">
         <h2>2. 선수 확인 / 용병 추가</h2>
-        <div class="row inline-row">
+        <div class="row inline-row add-merc-row">
           <input id="mercName" type="text" placeholder="용병/선수 이름 (세글자 추천)" />
           <select id="mercType">
             <option value="attend" selected>멤버</option>
             <option value="merc">용병</option>
           </select>
-        </div>
-        <div class="row">
           <button id="addMerc" class="secondary">멤버/용병 추가</button>
         </div>
         <div class="row">
-          <span id="playerStatus" class="status status-box">선수 목록 대기 중</span>
+          <span id="playerStatus" class="status status-box">선수 클릭 시 이름 수정 및 삭제 가능</span>
         </div>
         <div class="player-list" id="playerList"></div>
       </div>
@@ -78,7 +76,7 @@
             <select id="formationSelect"></select>
           </label>
           <label class="field-control">
-            다른 쿼터로 스쿼드 복사
+            다른 쿼터로 복사
             <select id="copyFrom"></select>
           </label>
           <button id="copyBtn" class="primary">복사</button>
@@ -91,10 +89,11 @@
       <div class="pitch-row">
         <div class="pitch-stack">
           <div class="player-strip-card">
-            <p class="muted">선수(포지션) 클릭 후 포지션(선수)을 클릭해 배치하세요.</p>
+            <p class="muted">선수 클릭 후 포지션 클릭</p>
             <div class="player-strip" id="playerStrip"></div>
           </div>
           <div class="pitch-wrap">
+            <div id="pitchQuarterBadge" class="pitch-quarter-badge" aria-hidden="true"></div>
             <div class="pitch-actions">
               <button id="lockToggle" class="secondary">잠금</button>
               <button id="captureBtn" class="secondary">캡쳐</button>

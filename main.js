@@ -99,6 +99,7 @@ const el = {
   copyFrom: document.getElementById('copyFrom'),
   copyBtn: document.getElementById('copyBtn'),
   pitch: document.getElementById('pitch'),
+  pitchQuarterBadge: document.getElementById('pitchQuarterBadge'),
   playerModal: document.getElementById('playerModal'),
   playerModalName: document.getElementById('playerModalName'),
   modalEdit: document.getElementById('modalEdit'),
@@ -177,6 +178,11 @@ function setSquadStatus(text, isError = false) {
   setBlockStatus(el.squadStatus, text, isError);
 }
 
+function updateOcrButtonState() {
+  const hasFile = Boolean(el.imageInput.files?.[0]);
+  el.ocrBtn.disabled = !hasFile;
+}
+
 function refreshFormationSelect() {
   const quarter = getQuarter();
   const keys = Object.keys(formations);
@@ -214,21 +220,7 @@ function renderQuarterTabs() {
       remove.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
-
-        const ok = window.confirm(`${quarter.name}를 삭제할까요?`);
-        if (!ok) {
-          return;
-        }
-
-        state.quarters = state.quarters.filter((q) => q.id !== quarter.id);
-        if (state.activeQuarterId === quarter.id) {
-          const fallback = state.quarters[Math.max(0, index - 1)] || state.quarters[0] || null;
-          state.activeQuarterId = fallback ? fallback.id : null;
-        }
-        state.selectedSlotId = null;
-        state.selectedPlayerId = null;
-        setSquadStatus(`${quarter.name} 삭제 완료`);
-        render();
+        openQuarterDeleteModal(quarter);
       });
       tab.appendChild(remove);
     }
@@ -288,17 +280,35 @@ function renderPlayerList() {
   });
 }
 
-let modalPlayerId = null;
+const modalState = {
+  type: null,
+  targetId: null
+};
 
 function openPlayerModal(player) {
-  modalPlayerId = player.id;
+  modalState.type = 'player';
+  modalState.targetId = player.id;
   el.playerModalName.textContent = player.name;
+  el.modalEdit.style.display = '';
+  el.modalDelete.textContent = '삭제';
   el.playerModal.classList.remove('hidden');
 }
 
 function closePlayerModal() {
-  modalPlayerId = null;
+  modalState.type = null;
+  modalState.targetId = null;
+  el.modalEdit.style.display = '';
+  el.modalDelete.textContent = '삭제';
   el.playerModal.classList.add('hidden');
+}
+
+function openQuarterDeleteModal(quarter) {
+  modalState.type = 'quarter-delete';
+  modalState.targetId = quarter.id;
+  el.playerModalName.textContent = `${quarter.name}를 삭제할까요?`;
+  el.modalEdit.style.display = 'none';
+  el.modalDelete.textContent = '삭제';
+  el.playerModal.classList.remove('hidden');
 }
 
 function renderPlayerStrip() {
@@ -501,10 +511,19 @@ function renderLockState() {
   el.lockToggle.className = quarter.locked ? 'primary' : 'secondary';
 }
 
+function renderPitchQuarterBadge() {
+  const quarter = getQuarter();
+  if (!el.pitchQuarterBadge || !quarter) {
+    return;
+  }
+  el.pitchQuarterBadge.textContent = `${quarter.name} | ${quarter.formation}`;
+}
+
 function render() {
   refreshFormationSelect();
   renderQuarterTabs();
   renderPitch();
+  renderPitchQuarterBadge();
   renderPlayerList();
   renderPlayerStrip();
   renderCopyOptions();
@@ -791,7 +810,7 @@ async function readAttendFromImage() {
     console.error(error);
     setOcrStatus('이미지 읽기에 실패했습니다.', true);
   } finally {
-    el.ocrBtn.disabled = false;
+    updateOcrButtonState();
   }
 }
 
@@ -982,6 +1001,23 @@ function addQuarter() {
   render();
 }
 
+function removeQuarter(quarterId) {
+  const currentIndex = state.quarters.findIndex((q) => q.id === quarterId);
+  if (currentIndex === -1) {
+    return;
+  }
+  const removedQuarter = state.quarters[currentIndex];
+  state.quarters = state.quarters.filter((q) => q.id !== quarterId);
+  if (state.activeQuarterId === quarterId) {
+    const fallback = state.quarters[Math.max(0, currentIndex - 1)] || state.quarters[0] || null;
+    state.activeQuarterId = fallback ? fallback.id : null;
+  }
+  state.selectedSlotId = null;
+  state.selectedPlayerId = null;
+  setSquadStatus(`${removedQuarter.name} 삭제 완료`);
+  render();
+}
+
 function copySquadToCurrent() {
   const source = getQuarter();
   const target = state.quarters.find((q) => q.id === el.copyFrom.value);
@@ -1005,6 +1041,14 @@ function copySquadToCurrent() {
 
 function bindEvents() {
   el.ocrBtn.addEventListener('click', readAttendFromImage);
+  el.imageInput.addEventListener('change', () => {
+    updateOcrButtonState();
+    if (el.imageInput.files?.[0]) {
+      setOcrStatus('이미지 업로드 완료');
+    } else {
+      setOcrStatus('대기 중');
+    }
+  });
   el.addMerc.addEventListener('click', addMercenary);
   el.mercName.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
@@ -1029,7 +1073,10 @@ function bindEvents() {
     }
   });
   el.modalEdit.addEventListener('click', () => {
-    const player = state.players.find((p) => p.id === modalPlayerId);
+    if (modalState.type !== 'player') {
+      return;
+    }
+    const player = state.players.find((p) => p.id === modalState.targetId);
     if (!player) {
       closePlayerModal();
       return;
@@ -1042,7 +1089,17 @@ function bindEvents() {
     closePlayerModal();
   });
   el.modalDelete.addEventListener('click', () => {
-    const player = state.players.find((p) => p.id === modalPlayerId);
+    if (modalState.type === 'quarter-delete') {
+      const quarterId = modalState.targetId;
+      closePlayerModal();
+      removeQuarter(quarterId);
+      return;
+    }
+    if (modalState.type !== 'player') {
+      closePlayerModal();
+      return;
+    }
+    const player = state.players.find((p) => p.id === modalState.targetId);
     if (!player) {
       closePlayerModal();
       return;
@@ -1056,6 +1113,7 @@ function bindEvents() {
 }
 
 function init() {
+  updateOcrButtonState();
   if (el.matchDate && !el.matchDate.value) {
     el.matchDate.value = getTodayDateString();
   }
