@@ -88,6 +88,7 @@ const el = {
   opponentName: document.getElementById('opponentName'),
   mercName: document.getElementById('mercName'),
   mercType: document.getElementById('mercType'),
+  mercFormRow: document.getElementById('mercFormRow'),
   addMerc: document.getElementById('addMerc'),
   playerList: document.getElementById('playerList'),
   playerStrip: document.getElementById('playerStrip'),
@@ -103,6 +104,7 @@ const el = {
   playerModal: document.getElementById('playerModal'),
   playerModalName: document.getElementById('playerModalName'),
   modalEdit: document.getElementById('modalEdit'),
+  modalToggleType: document.getElementById('modalToggleType'),
   modalDelete: document.getElementById('modalDelete'),
   modalCancel: document.getElementById('modalCancel')
 };
@@ -290,6 +292,8 @@ function openPlayerModal(player) {
   modalState.targetId = player.id;
   el.playerModalName.textContent = player.name;
   el.modalEdit.style.display = '';
+  el.modalToggleType.style.display = '';
+  el.modalToggleType.textContent = player.type === 'merc' ? '멤버로 바꾸기' : '용병으로 바꾸기';
   el.modalDelete.textContent = '삭제';
   el.playerModal.classList.remove('hidden');
 }
@@ -298,6 +302,8 @@ function closePlayerModal() {
   modalState.type = null;
   modalState.targetId = null;
   el.modalEdit.style.display = '';
+  el.modalToggleType.style.display = '';
+  el.modalToggleType.textContent = '용병으로 바꾸기';
   el.modalDelete.textContent = '삭제';
   el.playerModal.classList.add('hidden');
 }
@@ -307,6 +313,7 @@ function openQuarterDeleteModal(quarter) {
   modalState.targetId = quarter.id;
   el.playerModalName.textContent = `${quarter.name}를 삭제할까요?`;
   el.modalEdit.style.display = 'none';
+  el.modalToggleType.style.display = 'none';
   el.modalDelete.textContent = '삭제';
   el.playerModal.classList.remove('hidden');
 }
@@ -388,6 +395,18 @@ function renamePlayer(playerId, nextNameRaw) {
   player.name = nextName;
   setPlayerStatus(`${prev} -> ${nextName} 수정 완료`);
   render();
+}
+
+function togglePlayerType(playerId) {
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player) {
+    return false;
+  }
+  const nextType = player.type === 'merc' ? 'attend' : 'merc';
+  player.type = nextType;
+  setPlayerStatus(`${player.name} ${nextType === 'merc' ? '용병' : '멤버'} 전환 완료`);
+  render();
+  return true;
 }
 
 function placePlayerToSlot(quarter, slotId, playerId) {
@@ -509,6 +528,14 @@ function renderLockState() {
   const quarter = getQuarter();
   el.lockToggle.textContent = quarter.locked ? '잠금해제' : '잠금';
   el.lockToggle.className = quarter.locked ? 'primary' : 'secondary';
+}
+
+function setMercFormVisible(visible) {
+  if (!el.mercFormRow) {
+    return;
+  }
+  el.mercFormRow.hidden = !visible;
+  el.addMerc.textContent = visible ? '추가 완료' : '멤버/용병 추가';
 }
 
 function renderPitchQuarterBadge() {
@@ -818,17 +845,34 @@ function addMercenary() {
   const name = el.mercName.value.trim();
   if (!name) {
     setPlayerStatus('이름을 입력해 주세요.', true);
-    return;
+    return false;
   }
   const type = el.mercType.value === 'merc' ? 'merc' : 'attend';
   const added = addPlayersByNames([name], type);
   if (!added) {
     setPlayerStatus('이미 존재하는 이름입니다.', true);
-    return;
+    return false;
   }
   el.mercName.value = '';
   setPlayerStatus(`${type === 'merc' ? '용병' : 'Member'} 추가 완료`);
   render();
+  return true;
+}
+
+function handleAddMercClick() {
+  const isFormVisible = !el.mercFormRow.hidden;
+  if (!isFormVisible) {
+    setMercFormVisible(true);
+    setPlayerStatus('이름을 입력하고 추가 완료를 눌러 주세요.');
+    el.mercName.focus();
+    return;
+  }
+  const added = addMercenary();
+  if (!added) {
+    return;
+  }
+  el.mercType.value = 'attend';
+  setMercFormVisible(false);
 }
 
 function changeFormation() {
@@ -1049,10 +1093,14 @@ function bindEvents() {
       setOcrStatus('대기 중');
     }
   });
-  el.addMerc.addEventListener('click', addMercenary);
+  el.addMerc.addEventListener('click', handleAddMercClick);
   el.mercName.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
-      addMercenary();
+      const added = addMercenary();
+      if (added) {
+        el.mercType.value = 'attend';
+        setMercFormVisible(false);
+      }
     }
   });
   el.addQuarter.addEventListener('click', addQuarter);
@@ -1088,6 +1136,15 @@ function bindEvents() {
     renamePlayer(player.id, nextName);
     closePlayerModal();
   });
+  el.modalToggleType.addEventListener('click', () => {
+    if (modalState.type !== 'player') {
+      return;
+    }
+    const changed = togglePlayerType(modalState.targetId);
+    if (changed) {
+      closePlayerModal();
+    }
+  });
   el.modalDelete.addEventListener('click', () => {
     if (modalState.type === 'quarter-delete') {
       const quarterId = modalState.targetId;
@@ -1114,6 +1171,7 @@ function bindEvents() {
 
 function init() {
   updateOcrButtonState();
+  setMercFormVisible(false);
   if (el.matchDate && !el.matchDate.value) {
     el.matchDate.value = getTodayDateString();
   }

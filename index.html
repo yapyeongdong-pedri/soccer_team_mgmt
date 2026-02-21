@@ -51,12 +51,14 @@
 
       <div class="card compact-player-card">
         <h2>2. 선수 확인 / 용병 추가</h2>
-        <div class="row inline-row add-merc-row">
+        <div id="mercFormRow" class="row inline-row add-merc-row" hidden>
           <input id="mercName" type="text" placeholder="용병/선수 이름 (세글자 추천)" />
           <select id="mercType">
             <option value="attend" selected>멤버</option>
             <option value="merc">용병</option>
           </select>
+        </div>
+        <div class="row">
           <button id="addMerc" class="secondary">멤버/용병 추가</button>
         </div>
         <div class="row">
@@ -111,6 +113,7 @@
       <p id="playerModalName" class="modal-name"></p>
       <div class="modal-actions">
         <button id="modalEdit" class="secondary">이름 수정</button>
+        <button id="modalToggleType" class="secondary">용병으로 바꾸기</button>
         <button id="modalDelete" class="danger">삭제</button>
         <button id="modalCancel">취소</button>
       </div>
