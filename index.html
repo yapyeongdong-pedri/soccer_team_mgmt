@@ -32,6 +32,9 @@
             <button id="ocrBtn" class="primary">참석 읽기</button>
           </div>
           <div class="row">
+            <input id="ocrApiKey" type="text" placeholder="OCR.Space API Key (선택, 기본 무료키 사용)" />
+          </div>
+          <div class="row">
             <span id="ocrStatus" class="status">대기 중</span>
           </div>
         </div>
@@ -82,6 +85,7 @@
 
   <script src="https://unpkg.com/tesseract.js@5.0.2/dist/tesseract.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="config.local.js"></script>
   <script src="main.js"></script>
 </body>
 </html>

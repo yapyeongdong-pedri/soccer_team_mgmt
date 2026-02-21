@@ -78,6 +78,7 @@ const state = {
 
 const el = {
   imageInput: document.getElementById('imageInput'),
+  ocrApiKey: document.getElementById('ocrApiKey'),
   ocrBtn: document.getElementById('ocrBtn'),
   ocrStatus: document.getElementById('ocrStatus'),
   mercName: document.getElementById('mercName'),
@@ -406,23 +407,113 @@ function parseAttendNames(text) {
   return [...new Set(names)];
 }
 
+function getOcrApiKey() {
+  const configKey = window.__APP_CONFIG__?.ocrSpaceApiKey?.trim();
+  const inputKey = (el.ocrApiKey?.value || '').trim();
+  return configKey || inputKey || 'helloworld';
+}
+
+async function preprocessImageForOcr(file) {
+  if (typeof createImageBitmap !== 'function') {
+    return file;
+  }
+  const bitmap = await createImageBitmap(file);
+  const canvas = document.createElement('canvas');
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) {
+    return file;
+  }
+
+  ctx.drawImage(bitmap, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+    const contrasted = (gray - 128) * 1.6 + 128;
+    const bw = contrasted > 155 ? 255 : 0;
+    data[i] = bw;
+    data[i + 1] = bw;
+    data[i + 2] = bw;
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  const blob = await new Promise((resolve) => {
+    canvas.toBlob((output) => resolve(output), 'image/png');
+  });
+  return blob || file;
+}
+
+async function recognizeWithOcrSpace(fileOrBlob, apiKey) {
+  const form = new FormData();
+  form.append('language', 'kor');
+  form.append('scale', 'true');
+  form.append('isTable', 'true');
+  form.append('detectOrientation', 'true');
+  form.append('OCREngine', '2');
+  form.append('file', fileOrBlob, 'upload.png');
+
+  const response = await fetch('https://api.ocr.space/parse/image', {
+    method: 'POST',
+    headers: {
+      apikey: apiKey
+    },
+    body: form
+  });
+
+  if (!response.ok) {
+    throw new Error(`OCR.Space HTTP ${response.status}`);
+  }
+
+  const json = await response.json();
+  if (json.IsErroredOnProcessing) {
+    const detail = (json.ErrorMessage || []).join(' | ') || 'OCR.Space 처리 오류';
+    throw new Error(detail);
+  }
+
+  const parsedText = json.ParsedResults?.[0]?.ParsedText || '';
+  if (!parsedText.trim()) {
+    throw new Error('OCR.Space 결과 텍스트 없음');
+  }
+  return parsedText;
+}
+
+async function recognizeWithTesseract(fileOrBlob) {
+  if (typeof Tesseract === 'undefined') {
+    throw new Error('Tesseract unavailable');
+  }
+  const result = await Tesseract.recognize(fileOrBlob, 'kor+eng');
+  return result?.data?.text || '';
+}
+
 async function readAttendFromImage() {
   const file = el.imageInput.files?.[0];
   if (!file) {
     setStatus('먼저 이미지를 업로드해 주세요.', true);
     return;
   }
-  if (typeof Tesseract === 'undefined') {
-    setStatus('OCR 라이브러리를 불러오지 못했습니다.', true);
-    return;
-  }
 
   try {
     el.ocrBtn.disabled = true;
-    setStatus('OCR 분석 중...');
+    const apiKey = getOcrApiKey();
+    const processed = await preprocessImageForOcr(file);
+    let names = [];
 
-    const result = await Tesseract.recognize(file, 'kor+eng');
-    const names = parseAttendNames(result.data.text || '');
+    try {
+      setStatus('OCR.Space(무료) 분석 중...');
+      const ocrSpaceText = await recognizeWithOcrSpace(processed, apiKey);
+      names = parseAttendNames(ocrSpaceText);
+    } catch (spaceError) {
+      console.warn('OCR.Space 실패, Tesseract 폴백:', spaceError);
+    }
+
+    if (names.length === 0) {
+      setStatus('Tesseract 폴백 분석 중...');
+      const tessText = await recognizeWithTesseract(processed);
+      names = parseAttendNames(tessText);
+    }
 
     if (names.length === 0) {
       setStatus('참석 영역에서 이름을 찾지 못했습니다. 이미지 선명도를 확인해 주세요.', true);
@@ -573,6 +664,9 @@ function init() {
     state.quarters.push(createQuarter(i));
   }
   state.activeQuarterId = state.quarters[0].id;
+  if (window.__APP_CONFIG__?.ocrSpaceApiKey && el.ocrApiKey) {
+    el.ocrApiKey.value = 'local config key loaded';
+  }
   bindEvents();
   render();
 }
