@@ -18,9 +18,9 @@ const formations = {
     { id: 'df2', role: 'DF', x: 38, y: 72 },
     { id: 'df3', role: 'DF', x: 62, y: 72 },
     { id: 'df4', role: 'DF', x: 82, y: 72 },
-    { id: 'mf1', role: 'MF', x: 28, y: 52 },
-    { id: 'mf2', role: 'MF', x: 50, y: 50 },
-    { id: 'mf3', role: 'MF', x: 72, y: 52 },
+    { id: 'mf1', role: 'MF', x: 28, y: 48 },
+    { id: 'mf2', role: 'MF', x: 50, y: 52 },
+    { id: 'mf3', role: 'MF', x: 72, y: 48 },
     { id: 'fw1', role: 'FW', x: 20, y: 24 },
     { id: 'fw2', role: 'FW', x: 50, y: 18 },
     { id: 'fw3', role: 'FW', x: 80, y: 24 }
@@ -94,7 +94,12 @@ const el = {
   captureBtn: document.getElementById('captureBtn'),
   copyFrom: document.getElementById('copyFrom'),
   copyBtn: document.getElementById('copyBtn'),
-  pitch: document.getElementById('pitch')
+  pitch: document.getElementById('pitch'),
+  playerModal: document.getElementById('playerModal'),
+  playerModalName: document.getElementById('playerModalName'),
+  modalEdit: document.getElementById('modalEdit'),
+  modalDelete: document.getElementById('modalDelete'),
+  modalCancel: document.getElementById('modalCancel')
 };
 
 function uid() {
@@ -106,11 +111,11 @@ function getQuarter() {
 }
 
 function getFormationSlots(quarter) {
-  return formations[quarter.formation] || formations['4-4-2'];
+  return formations[quarter.formation] || formations['4-3-3'];
 }
 
 function createQuarter(index) {
-  const formation = '4-4-2';
+  const formation = '4-3-3';
   const slots = formations[formation];
   const assignments = {};
   slots.forEach((slot) => {
@@ -206,49 +211,32 @@ function renderPlayerList() {
     tag.className = `tag ${player.type === 'merc' ? 'merc' : 'attend'}`;
     tag.textContent = player.type === 'merc' ? '용병' : '멤버';
 
-    const left = document.createElement('div');
-    left.className = 'player-left';
-    left.appendChild(name);
-    left.appendChild(tag);
+    const title = document.createElement('div');
+    title.className = 'player-title';
+    title.appendChild(name);
+    title.appendChild(tag);
 
-    const meta = document.createElement('div');
-    meta.className = 'player-meta';
-
-    const remove = document.createElement('button');
-    const edit = document.createElement('button');
-    edit.type = 'button';
-    edit.className = 'edit-player';
-    edit.setAttribute('aria-label', '선수 이름 수정');
-    edit.textContent = '✎';
-    edit.addEventListener('click', (event) => {
-      event.stopPropagation();
-      const nextName = window.prompt('수정할 이름을 입력해 주세요.', player.name);
-      if (nextName === null) {
-        return;
-      }
-      renamePlayer(player.id, nextName);
-    });
-
-    remove.type = 'button';
-    remove.className = 'remove-player';
-    remove.setAttribute('aria-label', '선수 삭제');
-    remove.textContent = '🗑';
-    remove.addEventListener('click', (event) => {
-      event.stopPropagation();
-      removePlayer(player.id);
-    });
-
-    meta.appendChild(edit);
-    meta.appendChild(remove);
-    row.appendChild(left);
-    row.appendChild(meta);
+    row.appendChild(title);
 
     row.addEventListener('click', () => {
-      assignSelectedPlayer(player.id);
+      openPlayerModal(player);
     });
 
     el.playerList.appendChild(row);
   });
+}
+
+let modalPlayerId = null;
+
+function openPlayerModal(player) {
+  modalPlayerId = player.id;
+  el.playerModalName.textContent = player.name;
+  el.playerModal.classList.remove('hidden');
+}
+
+function closePlayerModal() {
+  modalPlayerId = null;
+  el.playerModal.classList.add('hidden');
 }
 
 function renderPlayerStrip() {
@@ -260,7 +248,7 @@ function renderPlayerStrip() {
   if (state.players.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'muted';
-    empty.textContent = '확정된 선수가 없습니다.';
+    empty.textContent = 'no list.';
     el.playerStrip.appendChild(empty);
     return;
   }
@@ -369,7 +357,7 @@ function renderPitch() {
     btn.style.transform = 'translate(-50%, -50%)';
 
     const player = state.players.find((p) => p.id === quarter.assignments[slot.id]);
-    btn.textContent = player ? player.name : `${slot.role}${idx + 1}`;
+    btn.textContent = player ? player.name : `${slot.role}`;
     btn.title = player ? `${slot.role} - ${player.name}` : `${slot.role} 자리`;
 
     btn.addEventListener('click', () => {
