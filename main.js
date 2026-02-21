@@ -85,7 +85,6 @@ const el = {
   squadStatus: document.getElementById('squadStatus'),
   teamName: document.getElementById('teamName'),
   matchDate: document.getElementById('matchDate'),
-  matchDateDisplay: document.getElementById('matchDateDisplay'),
   opponentName: document.getElementById('opponentName'),
   mercName: document.getElementById('mercName'),
   mercType: document.getElementById('mercType'),
@@ -120,69 +119,7 @@ function getTodayDateString() {
   return new Date(now.getTime() - tzOffsetMs).toISOString().slice(0, 10);
 }
 
-function toCompactDateText(isoDateText) {
-  const value = (isoDateText || '').trim();
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) {
-    return '';
-  }
-  return `${match[1].slice(2)}/${match[2]}/${match[3]}`;
-}
-
-function toIsoDateText(compactDateText) {
-  const compact = (compactDateText || '').trim();
-  const match = compact.match(/^(\d{2})\s*[\/.\-]?\s*(\d{2})\s*[\/.\-]?\s*(\d{2})$/);
-  if (!match) {
-    return '';
-  }
-  const year = Number(match[1]) + 2000;
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  if (month < 1 || month > 12 || day < 1 || day > 31) {
-    return '';
-  }
-  return `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-}
-
-function syncMatchDateDisplay() {
-  if (!el.matchDate || !el.matchDateDisplay) {
-    return;
-  }
-  const dateValue = (el.matchDate.value || '').trim() || getTodayDateString();
-  el.matchDate.value = dateValue;
-  el.matchDateDisplay.value = toCompactDateText(dateValue);
-}
-
-function applyMatchDateDisplayValue() {
-  if (!el.matchDate || !el.matchDateDisplay) {
-    return false;
-  }
-  const iso = toIsoDateText(el.matchDateDisplay.value);
-  if (!iso) {
-    return false;
-  }
-  el.matchDate.value = iso;
-  el.matchDateDisplay.value = toCompactDateText(iso);
-  return true;
-}
-
-function openMatchDatePicker() {
-  if (!el.matchDate) {
-    return;
-  }
-  if (typeof el.matchDate.showPicker === 'function') {
-    try {
-      el.matchDate.showPicker();
-    } catch (_) {
-      el.matchDate.focus();
-    }
-    return;
-  }
-  el.matchDate.focus();
-}
-
 function getMatchMeta() {
-  applyMatchDateDisplayValue();
   const team = (el.teamName?.value || '').trim() || '우리팀';
   const opponent = (el.opponentName?.value || '').trim();
   const matchDate = (el.matchDate?.value || '').trim() || getTodayDateString();
@@ -1176,24 +1113,6 @@ function bindEvents() {
     el.copyBtn.disabled = !target || target.locked;
   });
   el.copyBtn.addEventListener('click', copySquadToCurrent);
-  if (el.matchDate && el.matchDateDisplay) {
-    el.matchDate.addEventListener('change', syncMatchDateDisplay);
-    el.matchDateDisplay.addEventListener('click', openMatchDatePicker);
-    el.matchDateDisplay.addEventListener('focus', openMatchDatePicker);
-    el.matchDateDisplay.addEventListener('blur', () => {
-      if (!applyMatchDateDisplayValue()) {
-        syncMatchDateDisplay();
-      }
-    });
-    el.matchDateDisplay.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        if (!applyMatchDateDisplayValue()) {
-          syncMatchDateDisplay();
-        }
-      }
-    });
-  }
 
   el.modalCancel.addEventListener('click', closePlayerModal);
   el.playerModal.addEventListener('click', (event) => {
@@ -1256,7 +1175,6 @@ function init() {
   if (el.matchDate && !el.matchDate.value) {
     el.matchDate.value = getTodayDateString();
   }
-  syncMatchDateDisplay();
   for (let i = 1; i <= 4; i += 1) {
     state.quarters.push(createQuarter(i));
   }

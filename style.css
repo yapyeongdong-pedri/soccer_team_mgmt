@@ -463,7 +463,7 @@ select,
 button {
   width: 100%;
   min-height: 44px;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .match-meta-row label {
@@ -481,22 +481,17 @@ button {
 
 .match-meta-row .meta-team {
   flex: 0 0 30%;
-  max-width: 30%;
+  max-width: 35%;
 }
 
 .match-meta-row .meta-opponent {
   flex: 0 0 30%;
-  max-width: 30%;
+  max-width: 35%;
 }
 
 .match-meta-row .meta-date {
   flex: 0 0 20%;
   max-width: 20%;
-}
-
-.match-meta-row .meta-date .date-display {
-  width: 70% !important;
-  min-width: 78px;
 }
 
 .match-meta-row input[type="text"],
