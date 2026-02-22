@@ -74,7 +74,8 @@ const state = {
   activeQuarterId: null,
   selectedSlotId: null,
   selectedPlayerId: null,
-  copySourceId: null
+  copySourceId: null,
+  isHydrating: true
 };
 
 const el = {
@@ -86,13 +87,12 @@ const el = {
   teamName: document.getElementById('teamName'),
   matchDate: document.getElementById('matchDate'),
   opponentName: document.getElementById('opponentName'),
-  mercName: document.getElementById('mercName'),
-  mercType: document.getElementById('mercType'),
-  mercFormRow: document.getElementById('mercFormRow'),
-  addMerc: document.getElementById('addMerc'),
   playerList: document.getElementById('playerList'),
   playerStrip: document.getElementById('playerStrip'),
+  resetPlayers: document.getElementById('resetPlayers'),
+  playerCountLabel: document.getElementById('playerCountLabel'),
   addQuarter: document.getElementById('addQuarter'),
+  resetQuarter: document.getElementById('resetQuarter'),
   quarterTabs: document.getElementById('quarterTabs'),
   formationSelect: document.getElementById('formationSelect'),
   lockToggle: document.getElementById('lockToggle'),
@@ -103,11 +103,17 @@ const el = {
   pitchQuarterBadge: document.getElementById('pitchQuarterBadge'),
   playerModal: document.getElementById('playerModal'),
   playerModalName: document.getElementById('playerModalName'),
+  addPlayerForm: document.getElementById('addPlayerForm'),
+  addPlayerName: document.getElementById('addPlayerName'),
+  addPlayerType: document.getElementById('addPlayerType'),
+  addPlayerConfirm: document.getElementById('addPlayerConfirm'),
   modalEdit: document.getElementById('modalEdit'),
   modalToggleType: document.getElementById('modalToggleType'),
   modalDelete: document.getElementById('modalDelete'),
   modalCancel: document.getElementById('modalCancel')
 };
+
+const STORAGE_KEY = 'squad_builder_state_v1';
 
 function uid() {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -138,6 +144,90 @@ function formatDateForHeader(dateText) {
 
 function getQuarter() {
   return state.quarters.find((q) => q.id === state.activeQuarterId);
+}
+
+function saveState() {
+  if (state.isHydrating) {
+    return;
+  }
+  const meta = getMatchMeta();
+  const payload = {
+    version: 1,
+    meta,
+    players: state.players,
+    quarters: state.quarters,
+    activeQuarterId: state.activeQuarterId
+  };
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch (error) {
+    console.warn('localStorage save failed:', error);
+  }
+}
+
+function normalizeQuarter(rawQuarter, index) {
+  const formation = formations[rawQuarter?.formation] ? rawQuarter.formation : '4-3-3';
+  const quarter = {
+    id: rawQuarter?.id || `q_${uid()}`,
+    name: rawQuarter?.name || `${index}쿼터`,
+    formation,
+    locked: Boolean(rawQuarter?.locked),
+    assignments: { ...(rawQuarter?.assignments || {}) },
+    backups: { ...(rawQuarter?.backups || {}) }
+  };
+  ensureQuarterSlotMaps(quarter);
+  return quarter;
+}
+
+function normalizePlayer(rawPlayer) {
+  const name = String(rawPlayer?.name || '').trim();
+  if (!name) {
+    return null;
+  }
+  const type = rawPlayer?.type === 'merc' ? 'merc' : 'attend';
+  return {
+    id: rawPlayer?.id || `p_${uid()}`,
+    name,
+    type
+  };
+}
+
+function loadState() {
+  const raw = window.localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    return false;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    const players = Array.isArray(parsed.players) ? parsed.players.map(normalizePlayer).filter(Boolean) : [];
+    const quarters = Array.isArray(parsed.quarters)
+      ? parsed.quarters.map((q, index) => normalizeQuarter(q, index + 1))
+      : [];
+
+    if (players.length === 0 || quarters.length === 0) {
+      return false;
+    }
+
+    state.players = players;
+    state.quarters = quarters;
+    const activeId = parsed.activeQuarterId;
+    state.activeQuarterId = quarters.some((q) => q.id === activeId) ? activeId : quarters[0].id;
+
+    const meta = parsed.meta || {};
+    if (el.teamName && meta.team) {
+      el.teamName.value = meta.team;
+    }
+    if (el.opponentName && meta.opponent) {
+      el.opponentName.value = meta.opponent;
+    }
+    if (el.matchDate && meta.matchDate) {
+      el.matchDate.value = meta.matchDate;
+    }
+    return true;
+  } catch (error) {
+    console.warn('localStorage load failed:', error);
+    return false;
+  }
 }
 
 function getFormationSlots(quarter) {
@@ -262,19 +352,40 @@ function getUsedPlayerIds(quarter) {
   ]);
 }
 
+function getPlayerQuarterCounts() {
+  const counts = new Map();
+  state.players.forEach((p) => counts.set(p.id, 0));
+
+  state.quarters.forEach((quarter) => {
+    ensureQuarterSlotMaps(quarter);
+    const slots = getFormationSlots(quarter);
+    slots.forEach((slot) => {
+      const mainId = quarter.assignments?.[slot.id] || null;
+      const backupId = quarter.backups?.[slot.id] || null;
+      if (mainId) {
+        const mainValue = backupId ? 0.5 : 1;
+        counts.set(mainId, (counts.get(mainId) || 0) + mainValue);
+      }
+      if (backupId) {
+        counts.set(backupId, (counts.get(backupId) || 0) + 0.5);
+      }
+    });
+  });
+
+  return counts;
+}
+
 function renderPlayerList() {
-  const quarter = getQuarter();
-  ensureQuarterSlotMaps(quarter);
-  const used = getUsedPlayerIds(quarter);
-  const visible = state.players.filter((p) => !used.has(p.id));
+  const visible = state.players;
+  if (el.playerCountLabel) {
+    const members = state.players.filter((p) => p.type !== 'merc').length;
+    const mercs = state.players.filter((p) => p.type === 'merc').length;
+    el.playerCountLabel.textContent = `(선수 ${members} / 용병 ${mercs})`;
+  }
 
   el.playerList.innerHTML = '';
   if (visible.length === 0) {
-    const empty = document.createElement('p');
-    empty.className = 'muted';
-    empty.textContent = '';
-    el.playerList.appendChild(empty);
-    return;
+    // keep list empty except add button
   }
 
   visible.forEach((player) => {
@@ -302,6 +413,13 @@ function renderPlayerList() {
 
     el.playerList.appendChild(row);
   });
+
+  const addCard = document.createElement('button');
+  addCard.type = 'button';
+  addCard.className = 'player player-add';
+  addCard.textContent = '+ 추가';
+  addCard.addEventListener('click', openAddPlayerModal);
+  el.playerList.appendChild(addCard);
 }
 
 const modalState = {
@@ -309,24 +427,54 @@ const modalState = {
   targetId: null
 };
 
+function toggleAddModalForm(visible) {
+  if (!el.addPlayerForm || !el.addPlayerConfirm) {
+    return;
+  }
+  el.addPlayerForm.hidden = !visible;
+  el.addPlayerConfirm.hidden = !visible;
+}
+
 function openPlayerModal(player) {
   modalState.type = 'player';
   modalState.targetId = player.id;
   el.playerModalName.textContent = player.name;
+  toggleAddModalForm(false);
   el.modalEdit.style.display = '';
   el.modalToggleType.style.display = '';
   el.modalToggleType.textContent = player.type === 'merc' ? '멤버로 바꾸기' : '용병으로 바꾸기';
   el.modalDelete.textContent = '삭제';
+  el.modalDelete.style.display = '';
+  el.playerModal.classList.remove('hidden');
+}
+
+function openAddPlayerModal() {
+  modalState.type = 'add-player';
+  modalState.targetId = null;
+  el.playerModalName.textContent = '멤버/용병 추가';
+  toggleAddModalForm(true);
+  if (el.addPlayerName) {
+    el.addPlayerName.value = '';
+    el.addPlayerName.focus();
+  }
+  if (el.addPlayerType) {
+    el.addPlayerType.value = 'attend';
+  }
+  el.modalEdit.style.display = 'none';
+  el.modalToggleType.style.display = 'none';
+  el.modalDelete.style.display = 'none';
   el.playerModal.classList.remove('hidden');
 }
 
 function closePlayerModal() {
   modalState.type = null;
   modalState.targetId = null;
+  toggleAddModalForm(false);
   el.modalEdit.style.display = '';
   el.modalToggleType.style.display = '';
   el.modalToggleType.textContent = '용병으로 바꾸기';
   el.modalDelete.textContent = '삭제';
+  el.modalDelete.style.display = '';
   el.playerModal.classList.add('hidden');
 }
 
@@ -334,9 +482,11 @@ function openQuarterDeleteModal(quarter) {
   modalState.type = 'quarter-delete';
   modalState.targetId = quarter.id;
   el.playerModalName.textContent = `${quarter.name}를 삭제할까요?`;
+  toggleAddModalForm(false);
   el.modalEdit.style.display = 'none';
   el.modalToggleType.style.display = 'none';
   el.modalDelete.textContent = '삭제';
+  el.modalDelete.style.display = '';
   el.playerModal.classList.remove('hidden');
 }
 
@@ -345,6 +495,7 @@ function renderPlayerStrip() {
   ensureQuarterSlotMaps(quarter);
   const used = getUsedPlayerIds(quarter);
   const locked = quarter.locked;
+  const counts = getPlayerQuarterCounts();
 
   el.playerStrip.innerHTML = '';
   if (state.players.length === 0) {
@@ -359,9 +510,10 @@ function renderPlayerStrip() {
     const chip = document.createElement('button');
     const isAssigned = used.has(player.id);
     const isSelected = state.selectedPlayerId === player.id;
+    const count = counts.get(player.id) || 0;
     chip.type = 'button';
     chip.className = `player-chip ${player.type === 'merc' ? 'merc' : 'attend'}${isSelected ? ' selected' : ''}${isAssigned || locked ? ' disabled' : ''}`;
-    chip.textContent = player.name;
+    chip.textContent = `${player.name} (${count.toFixed(1)})`;
 
     if (!isAssigned && !locked) {
       chip.addEventListener('click', () => {
@@ -399,6 +551,30 @@ function removePlayer(playerId) {
     state.selectedPlayerId = null;
   }
   setPlayerStatus(`${player ? player.name : '선수'} 삭제 완료`);
+  render();
+}
+
+function resetPlayersList() {
+  if (state.players.length === 0) {
+    setPlayerStatus('삭제할 선수가 없습니다.', true);
+    return;
+  }
+  const ok = window.confirm('선수 리스트를 모두 초기화할까요? 배치도 함께 삭제됩니다.');
+  if (!ok) {
+    return;
+  }
+  state.players = [];
+  state.quarters.forEach((quarter) => {
+    Object.keys(quarter.assignments || {}).forEach((slotId) => {
+      quarter.assignments[slotId] = null;
+    });
+    Object.keys(quarter.backups || {}).forEach((slotId) => {
+      quarter.backups[slotId] = null;
+    });
+  });
+  state.selectedSlotId = null;
+  state.selectedPlayerId = null;
+  setPlayerStatus('선수 리스트 초기화 완료');
   render();
 }
 
@@ -605,14 +781,6 @@ function renderLockState() {
   el.lockToggle.className = quarter.locked ? 'primary' : 'secondary';
 }
 
-function setMercFormVisible(visible) {
-  if (!el.mercFormRow) {
-    return;
-  }
-  el.mercFormRow.hidden = !visible;
-  el.addMerc.textContent = visible ? '추가 완료' : '멤버/용병 추가';
-}
-
 function renderPitchQuarterBadge() {
   const quarter = getQuarter();
   if (!el.pitchQuarterBadge || !quarter) {
@@ -630,6 +798,7 @@ function render() {
   renderPlayerStrip();
   renderCopyOptions();
   renderLockState();
+  saveState();
 }
 
 function addPlayersByNames(names, type) {
@@ -917,37 +1086,20 @@ async function readAttendFromImage() {
 }
 
 function addMercenary() {
-  const name = el.mercName.value.trim();
+  const name = el.addPlayerName.value.trim();
   if (!name) {
     setPlayerStatus('이름을 입력해 주세요.', true);
     return false;
   }
-  const type = el.mercType.value === 'merc' ? 'merc' : 'attend';
+  const type = el.addPlayerType.value === 'merc' ? 'merc' : 'attend';
   const added = addPlayersByNames([name], type);
   if (!added) {
     setPlayerStatus('이미 존재하는 이름입니다.', true);
     return false;
   }
-  el.mercName.value = '';
-  setPlayerStatus(`${type === 'merc' ? '용병' : 'Member'} 추가 완료`);
+  setPlayerStatus(`${type === 'merc' ? '용병' : '멤버'} 추가 완료`);
   render();
   return true;
-}
-
-function handleAddMercClick() {
-  const isFormVisible = !el.mercFormRow.hidden;
-  if (!isFormVisible) {
-    setMercFormVisible(true);
-    setPlayerStatus('이름을 입력하고 추가 완료를 눌러 주세요.');
-    el.mercName.focus();
-    return;
-  }
-  const added = addMercenary();
-  if (!added) {
-    return;
-  }
-  el.mercType.value = 'attend';
-  setMercFormVisible(false);
 }
 
 function changeFormation() {
@@ -959,7 +1111,15 @@ function changeFormation() {
   }
 
   const next = el.formationSelect.value;
+  if (next === quarter.formation) {
+    return;
+  }
   if (!formations[next]) {
+    return;
+  }
+  const ok = window.confirm('포메이션을 변경하면 현재 배치가 초기화됩니다. 계속할까요?');
+  if (!ok) {
+    el.formationSelect.value = quarter.formation;
     return;
   }
 
@@ -1203,6 +1363,32 @@ function copySquadToCurrent() {
   render();
 }
 
+function resetCurrentQuarter() {
+  const quarter = getQuarter();
+  if (!quarter) {
+    return;
+  }
+  if (quarter.locked) {
+    setSquadStatus('잠금 상태에서는 초기화할 수 없습니다.', true);
+    return;
+  }
+  const ok = window.confirm(`${quarter.name} 선수 배치를 초기화할까요?`);
+  if (!ok) {
+    return;
+  }
+  ensureQuarterSlotMaps(quarter);
+  Object.keys(quarter.assignments).forEach((slotId) => {
+    quarter.assignments[slotId] = null;
+  });
+  Object.keys(quarter.backups || {}).forEach((slotId) => {
+    quarter.backups[slotId] = null;
+  });
+  state.selectedSlotId = null;
+  state.selectedPlayerId = null;
+  setSquadStatus(`${quarter.name} 배치 초기화 완료`);
+  render();
+}
+
 function bindEvents() {
   el.ocrBtn.addEventListener('click', readAttendFromImage);
   el.imageInput.addEventListener('change', () => {
@@ -1213,17 +1399,23 @@ function bindEvents() {
       setOcrStatus('대기 중');
     }
   });
-  el.addMerc.addEventListener('click', handleAddMercClick);
-  el.mercName.addEventListener('keydown', (event) => {
+  el.addPlayerConfirm.addEventListener('click', () => {
+    const added = addMercenary();
+    if (added) {
+      closePlayerModal();
+    }
+  });
+  el.addPlayerName.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
       const added = addMercenary();
       if (added) {
-        el.mercType.value = 'attend';
-        setMercFormVisible(false);
+        closePlayerModal();
       }
     }
   });
+  el.resetPlayers.addEventListener('click', resetPlayersList);
   el.addQuarter.addEventListener('click', addQuarter);
+  el.resetQuarter.addEventListener('click', resetCurrentQuarter);
   el.formationSelect.addEventListener('change', changeFormation);
   el.lockToggle.addEventListener('click', toggleLock);
   el.captureBtn.addEventListener('click', captureCurrentQuarter);
@@ -1272,6 +1464,10 @@ function bindEvents() {
       removeQuarter(quarterId);
       return;
     }
+    if (modalState.type === 'add-player') {
+      closePlayerModal();
+      return;
+    }
     if (modalState.type !== 'player') {
       closePlayerModal();
       return;
@@ -1291,14 +1487,17 @@ function bindEvents() {
 
 function init() {
   updateOcrButtonState();
-  setMercFormVisible(false);
-  if (el.matchDate && !el.matchDate.value) {
-    el.matchDate.value = getTodayDateString();
+  const loaded = loadState();
+  if (!loaded) {
+    if (el.matchDate && !el.matchDate.value) {
+      el.matchDate.value = getTodayDateString();
+    }
+    for (let i = 1; i <= 4; i += 1) {
+      state.quarters.push(createQuarter(i));
+    }
+    state.activeQuarterId = state.quarters[0].id;
   }
-  for (let i = 1; i <= 4; i += 1) {
-    state.quarters.push(createQuarter(i));
-  }
-  state.activeQuarterId = state.quarters[0].id;
+  state.isHydrating = false;
   bindEvents();
   render();
 }

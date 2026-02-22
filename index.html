@@ -38,8 +38,10 @@
       </div>
 
       <div class="card">
-        <h2>1. 선수 등록</h2>
-        <p class="muted">카카오톡 참석자 캡쳐 > 업로드 > 참석 명단 Scan 클릭!</p>
+        <div class="section-header">
+          <h2>1. 선수 등록</h2>
+          <p class="muted helper-inline">카카오톡 참석자 캡쳐 > 업로드 > 참석 명단 Scan 클릭!</p>
+        </div>
         <div class="row ocr-row">
           <input id="imageInput" type="file" accept="image/*" />
           <button id="ocrBtn" class="primary">참석 명단 Scan</button>
@@ -50,16 +52,14 @@
       </div>
 
       <div class="card compact-player-card">
-        <h2>2. 선수 확인 / 용병 추가</h2>
-        <div id="mercFormRow" class="row inline-row add-merc-row" hidden>
-          <input id="mercName" type="text" placeholder="용병/선수 이름 (세글자 추천)" />
-          <select id="mercType">
-            <option value="attend" selected>멤버</option>
-            <option value="merc">용병</option>
-          </select>
-        </div>
-        <div class="row">
-          <button id="addMerc" class="secondary">멤버/용병 추가</button>
+        <div class="section-header">
+          <div class="section-title">
+            <h2>2. 선수 확인 / 용병 추가</h2>
+            <span id="playerCountLabel" class="muted">(선수 0 / 용병 0)</span>
+          </div>
+          <div class="section-meta">
+            <button id="resetPlayers" class="secondary">리스트 초기화</button>
+          </div>
         </div>
         <div class="row">
           <span id="playerStatus" class="status status-box">선수 클릭 시 이름 수정 및 삭제 가능</span>
@@ -69,7 +69,10 @@
       <div class="card quarter-card controls">
         <div class="quarter-header">
           <h2>3. 쿼터별 포메이션 설정</h2>
-          <button id="addQuarter" class="secondary">쿼터 추가</button>
+          <div class="quarter-actions">
+            <button id="addQuarter" class="secondary">쿼터 추가</button>
+            <button id="resetQuarter" class="secondary">쿼터 초기화</button>
+          </div>
         </div>
         <div id="quarterTabs" class="tabs"></div>
         <div class="row quarter-inline-controls">
@@ -111,7 +114,15 @@
     <div class="modal-backdrop"></div>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="playerModalTitle">
       <p id="playerModalName" class="modal-name"></p>
+      <div id="addPlayerForm" class="modal-form" hidden>
+        <input id="addPlayerName" type="text" placeholder="이름 입력" />
+        <select id="addPlayerType">
+          <option value="attend" selected>멤버</option>
+          <option value="merc">용병</option>
+        </select>
+      </div>
       <div class="modal-actions">
+        <button id="addPlayerConfirm" class="secondary" hidden>추가</button>
         <button id="modalEdit" class="secondary">이름 수정</button>
         <button id="modalToggleType" class="secondary">용병으로 바꾸기</button>
         <button id="modalDelete" class="danger">삭제</button>
