@@ -21,35 +21,35 @@ const formations = {
     { id: 'mf1', role: 'MF', x: 28, y: 48 },
     { id: 'mf2', role: 'MF', x: 50, y: 54 },
     { id: 'mf3', role: 'MF', x: 72, y: 48 },
-    { id: 'fw1', role: 'FW', x: 20, y: 24 },
+    { id: 'fw1', role: 'FW', x: 20, y: 22 },
     { id: 'fw2', role: 'FW', x: 50, y: 18 },
-    { id: 'fw3', role: 'FW', x: 80, y: 24 }
+    { id: 'fw3', role: 'FW', x: 80, y: 22 }
   ],
   '3-5-2': [
     { id: 'gk1', role: 'GK', x: 50, y: 90 },
     { id: 'df1', role: 'DF', x: 26, y: 72 },
-    { id: 'df2', role: 'DF', x: 50, y: 70 },
+    { id: 'df2', role: 'DF', x: 50, y: 74 },
     { id: 'df3', role: 'DF', x: 74, y: 72 },
-    { id: 'mf1', role: 'MF', x: 14, y: 48 },
-    { id: 'mf2', role: 'MF', x: 32, y: 52 },
-    { id: 'mf3', role: 'MF', x: 50, y: 50 },
-    { id: 'mf4', role: 'MF', x: 68, y: 52 },
-    { id: 'mf5', role: 'MF', x: 86, y: 48 },
+    { id: 'mf1', role: 'MF', x: 14, y: 44 },
+    { id: 'mf2', role: 'MF', x: 32, y: 58 },
+    { id: 'mf3', role: 'MF', x: 50, y: 44 },
+    { id: 'mf4', role: 'MF', x: 68, y: 58 },
+    { id: 'mf5', role: 'MF', x: 86, y: 44 },
     { id: 'fw1', role: 'FW', x: 38, y: 24 },
     { id: 'fw2', role: 'FW', x: 62, y: 24 }
   ],
   '3-4-3': [
     { id: 'gk1', role: 'GK', x: 50, y: 90 },
     { id: 'df1', role: 'DF', x: 26, y: 72 },
-    { id: 'df2', role: 'DF', x: 50, y: 70 },
+    { id: 'df2', role: 'DF', x: 50, y: 74 },
     { id: 'df3', role: 'DF', x: 74, y: 72 },
     { id: 'mf1', role: 'MF', x: 18, y: 50 },
-    { id: 'mf2', role: 'MF', x: 40, y: 52 },
-    { id: 'mf3', role: 'MF', x: 60, y: 52 },
+    { id: 'mf2', role: 'MF', x: 40, y: 54 },
+    { id: 'mf3', role: 'MF', x: 60, y: 54 },
     { id: 'mf4', role: 'MF', x: 82, y: 50 },
-    { id: 'fw1', role: 'FW', x: 20, y: 24 },
+    { id: 'fw1', role: 'FW', x: 20, y: 22 },
     { id: 'fw2', role: 'FW', x: 50, y: 18 },
-    { id: 'fw3', role: 'FW', x: 80, y: 24 }
+    { id: 'fw3', role: 'FW', x: 80, y: 22 }
   ],
   '4-2-3-1': [
     { id: 'gk1', role: 'GK', x: 50, y: 90 },
