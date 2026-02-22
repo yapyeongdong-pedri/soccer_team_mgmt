@@ -881,7 +881,7 @@ button {
   font-size: 14px;
   width: auto !important;
   min-height: 34px !important;
-  min-width: 88px;
+  min-width: 70px;
   padding: 6px 10px !important;
   flex: 0 0 auto !important;
 }
