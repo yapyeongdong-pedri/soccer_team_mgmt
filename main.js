@@ -93,6 +93,7 @@ const el = {
   playerCountLabel: document.getElementById('playerCountLabel'),
   addQuarter: document.getElementById('addQuarter'),
   resetQuarter: document.getElementById('resetQuarter'),
+  quarterCard: document.getElementById('quarterCard'),
   quarterTabs: document.getElementById('quarterTabs'),
   formationSelect: document.getElementById('formationSelect'),
   lockToggle: document.getElementById('lockToggle'),
@@ -313,7 +314,9 @@ function renderQuarterTabs() {
   state.quarters.forEach((quarter, index) => {
     const tab = document.createElement('button');
     tab.type = 'button';
-    tab.className = `tab ${quarter.id === state.activeQuarterId ? 'active' : ''}`;
+    const slots = getFormationSlots(quarter);
+    const allFilled = slots.every((slot) => Boolean(quarter.assignments?.[slot.id]));
+    tab.className = `tab ${quarter.id === state.activeQuarterId ? 'active' : ''}${allFilled ? ' filled' : ''}`;
 
     const label = document.createElement('span');
     label.className = 'tab-label';
@@ -1154,6 +1157,13 @@ async function captureCurrentQuarter() {
   const quarter = getQuarter();
   ensureQuarterSlotMaps(quarter);
   const slots = getFormationSlots(quarter);
+  const allFilled = slots.every((slot) => Boolean(quarter.assignments?.[slot.id]));
+  if (!allFilled) {
+    const ok = window.confirm('포메이션이 완성되지 않았습니다. 그래도 캡쳐할까요?');
+    if (!ok) {
+      return;
+    }
+  }
 
   const roleFill = {
     FW: '#e04c3a',

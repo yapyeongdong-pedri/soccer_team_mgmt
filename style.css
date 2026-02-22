@@ -99,6 +99,7 @@ h1 {
   background: var(--card);
   border-radius: 18px;
   padding: 16px 18px;
+  border: 2px solid transparent;
   box-shadow: 0 14px 35px rgba(0, 0, 0, 0.08);
 }
 
@@ -125,6 +126,11 @@ h1 {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* Player list reset button text size */
+#resetPlayers {
+  font-size: 14px;
 }
 
 .helper-inline {
@@ -256,7 +262,7 @@ button:hover {
 
 .player-name {
   font-weight: 700;
-  font-size: 12px;
+  font-size: 14px;
   min-width: 0;
   white-space: normal;
   overflow: hidden;
@@ -337,6 +343,11 @@ button:hover {
 .tab.active {
   background: var(--accent);
   color: #fff;
+}
+
+.tab.filled {
+  border: 2px solid #d59d3a;
+  box-shadow: 0 0 0 2px rgba(213, 157, 58, 0.18);
 }
 
 .controls label {
@@ -867,6 +878,7 @@ button {
 
 #addQuarter,
 #resetQuarter {
+  font-size: 14px;
   width: auto !important;
   min-height: 34px !important;
   min-width: 88px;
@@ -876,6 +888,16 @@ button {
 
 .quarter-card .tabs {
   margin-bottom: 8px;
+}
+
+.quarter-card.filled {
+  border-color: #d59d3a;
+  box-shadow: 0 0 0 3px rgba(213, 157, 58, 0.18), 0 14px 35px rgba(0, 0, 0, 0.08);
+}
+
+/* Quarter tab labels (e.g., 1쿼터, 2쿼터) */
+.quarter-card .tab-label {
+  font-size: 14px;
 }
 
 .controls .row.wrap {
@@ -916,7 +938,7 @@ button {
 #lockToggle,
 #captureBtn {
   width: auto !important;
-  min-width: 84px;
+  min-width: 42px;
   flex: 0 0 auto !important;
 }
 
