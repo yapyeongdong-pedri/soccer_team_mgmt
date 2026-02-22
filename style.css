@@ -400,12 +400,12 @@ button:hover {
 .position.gk { background: var(--gk); color: #2c2c2c; }
 
 .position.backup {
-  width: 29px;
-  height: 29px;
+  width: 38px;
+  height: 38px;
   min-width: 29px;
   min-height: 29px;
   aspect-ratio: 1 / 1;
-  font-size: 8px;
+  font-size: 10px;
   line-height: 1;
   padding: 0;
   border-radius: 50%;

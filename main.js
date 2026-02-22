@@ -1281,9 +1281,9 @@ async function captureCurrentQuarter() {
       const backupPlayerId = quarter.backups[slot.id];
       const backupPlayer = state.players.find((p) => p.id === backupPlayerId);
       if (backupPlayer) {
-        const backupX = x + Math.round(radius * 0.95);
-        const backupY = y - Math.round(radius * 0.72);
-        const backupRadius = Math.max(12, Math.round(radius * 0.5));
+        const backupX = x + Math.round(radius * 1.05);
+        const backupY = y - Math.round(radius * 0.85);
+        const backupRadius = Math.max(16, Math.round(radius * 0.65));
         drawSlot(
           ctx,
           backupX,
@@ -1292,8 +1292,8 @@ async function captureCurrentQuarter() {
           backupPlayer.name,
           roleFillTransparent[role] || roleFillTransparent.MF,
           false,
-          6,
-          1.3
+          8,
+          1.4
         );
       }
     });
