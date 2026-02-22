@@ -45,6 +45,17 @@ body {
   margin-bottom: 24px;
 }
 
+#resetSession {
+  margin-top: 20px;
+  min-width: 70px;
+  align-self: flex-start;
+}
+
+/* Reset button width control */
+#resetSession {
+  width: auto;
+}
+
 .kicker {
   letter-spacing: 0.3em;
   text-transform: uppercase;
@@ -459,8 +470,9 @@ input:disabled {
 }
 
 .app-header {
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
   margin-bottom: 14px;
 }
@@ -473,6 +485,7 @@ input:disabled {
 h1 {
   font-size: 24px;
   margin-bottom: 4px;
+  white-space: nowrap;
 }
 
 .sub {

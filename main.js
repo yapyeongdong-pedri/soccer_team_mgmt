@@ -108,6 +108,7 @@ const el = {
   addPlayerName: document.getElementById('addPlayerName'),
   addPlayerType: document.getElementById('addPlayerType'),
   addPlayerConfirm: document.getElementById('addPlayerConfirm'),
+  resetSession: document.getElementById('resetSession'),
   modalEdit: document.getElementById('modalEdit'),
   modalToggleType: document.getElementById('modalToggleType'),
   modalDelete: document.getElementById('modalDelete'),
@@ -578,6 +579,41 @@ function resetPlayersList() {
   state.selectedSlotId = null;
   state.selectedPlayerId = null;
   setPlayerStatus('선수 리스트 초기화 완료');
+  render();
+}
+
+function resetSession() {
+  const ok = window.confirm('모든 데이터를 초기화할까요?');
+  if (!ok) {
+    return;
+  }
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    console.warn('localStorage reset failed:', error);
+  }
+  state.players = [];
+  state.quarters = [];
+  for (let i = 1; i <= 4; i += 1) {
+    state.quarters.push(createQuarter(i));
+  }
+  state.activeQuarterId = state.quarters[0].id;
+  state.selectedSlotId = null;
+  state.selectedPlayerId = null;
+  state.copySourceId = null;
+
+  if (el.teamName) {
+    el.teamName.value = '';
+  }
+  if (el.opponentName) {
+    el.opponentName.value = '';
+  }
+  if (el.matchDate) {
+    el.matchDate.value = getTodayDateString();
+  }
+  setPlayerStatus('전체 초기화 완료');
+  setSquadStatus('스쿼드 대기 중');
+  setOcrStatus('대기 중');
   render();
 }
 
@@ -1424,6 +1460,7 @@ function bindEvents() {
     }
   });
   el.resetPlayers.addEventListener('click', resetPlayersList);
+  el.resetSession.addEventListener('click', resetSession);
   el.addQuarter.addEventListener('click', addQuarter);
   el.resetQuarter.addEventListener('click', resetCurrentQuarter);
   el.formationSelect.addEventListener('change', changeFormation);
