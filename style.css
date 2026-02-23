@@ -30,6 +30,28 @@ body {
   color: var(--ink);
 }
 
+.pages {
+  scroll-snap-type: y mandatory;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px 40px;
+  scroll-snap-align: start;
+}
+
+.page-inner {
+  width: 100%;
+  max-width: 560px;
+}
+
+.hero-card {
+  text-align: left;
+}
+
 .app {
   max-width: 560px;
   width: 100%;
@@ -463,6 +485,87 @@ input:disabled {
   cursor: not-allowed;
   transform: none !important;
   box-shadow: none !important;
+}
+
+.full-span {
+  grid-column: 1 / -1;
+}
+
+.site-nav {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  width: min(560px, calc(100% - 20px));
+  transform: translateX(-50%) translateY(-12px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  z-index: 1000;
+}
+
+.site-nav.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.site-nav.fading {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-8px);
+  pointer-events: none;
+}
+
+.site-nav-inner {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e6e0d3;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(6px);
+}
+
+.site-nav a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #efe8db;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.site-nav a:hover {
+  background: #e4dccb;
+}
+
+.feedback-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.field-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.field-block input,
+.field-block textarea {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #d9d4c8;
+  font-family: inherit;
+  resize: vertical;
 }
 
 /* Mobile-first optimization */
