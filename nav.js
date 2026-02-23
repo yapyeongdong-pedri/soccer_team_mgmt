@@ -3,6 +3,17 @@
   if (!nav) {
     return;
   }
+  const path = (window.location.pathname || '').split('/').pop() || 'index.html';
+  const links = nav.querySelectorAll('a[href]');
+  links.forEach((link) => {
+    const href = link.getAttribute('href');
+    if (!href) {
+      return;
+    }
+    if (href === path) {
+      link.classList.add('active');
+    }
+  });
   if (document.body.classList.contains('nav-fixed')) {
     nav.classList.add('visible');
     nav.classList.remove('fading');
